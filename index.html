@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gemini Podcast Audio Generator</title>
+    <meta name="description" content="Python tool to create multi-speaker podcast audio files from JSON scripts using Gemini TTS and google-genai SDK." />
+    <meta property="og:title" content="Gemini Podcast Audio Generator" />
+    <meta property="og:description" content="Python tool to create multi-speaker podcast audio files from JSON scripts using Gemini TTS and google-genai SDK." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Vazirmatn:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+    <script>
+      // Suppress benign WebSocket / HMR transport disconnect errors in iframe preview
+      window.addEventListener('error', function(event) {
+        if (
+          event.message &&
+          (event.message.includes('WebSocket') ||
+            event.message.includes('@vite/client') ||
+            event.message.includes('createWebSocketModuleRunnerTransport'))
+        ) {
+          event.stopImmediatePropagation();
+          event.preventDefault();
+        }
+      }, true);
+      window.addEventListener('unhandledrejection', function(event) {
+        var str = event.reason ? String(event.reason) : '';
+        if (str.includes('WebSocket') || str.includes('@vite/client')) {
+          event.stopImmediatePropagation();
+          event.preventDefault();
+        }
+      }, true);
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

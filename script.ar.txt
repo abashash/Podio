@@ -1,0 +1,8 @@
+=== SCRIPT START ===
+Rami | Promote | [excited] مرحبًا بكم في استوديو توبيرشيا! [calm] أنا آرش وهذه سارة.
+Leda | Friendly | [amused] مرحبًا آرش! [warmly] وأهلًا بكل المستمعين الأعزاء.
+Rami | Curious | [curious] سارة، ما رأيك في الجيل الجديد من نماذج الصوت الحوارية؟
+Leda | Analytical | [thoughtful] النماذج أصبحت طبيعية للغاية وتجسد المشاعر ونبرات الصوت بدقة.
+Rami | Friendly | [cheerful] بالضبط، وهذا يفتح آفاقًا جديدة كليًا لإنتاج البودكاست بجودة عالية.
+Leda | Promote | [excited] شكرًا لمتابعتكم، وترقبوا الحلقات القادمة!
+=== SCRIPT END ===
