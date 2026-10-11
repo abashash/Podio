@@ -1224,7 +1224,7 @@ export default function App() {
         </div>
 
         {/* 3. Workspace Grid (2 equal columns on desktop: 1fr 1fr; 1 column < 1024px) */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start w-full">
+        <div className="podcast-workspace-grid">
           {/* Left Column (50% on desktop): Script Editor Card */}
           <div className="w-full min-w-0 bg-[#121214] border border-white/[0.08] rounded-[20px] p-5 sm:p-6 flex flex-col gap-4 shadow-xl">
             {/* Top row inside card: title "Script", language buttons, and live counters on the end side */}

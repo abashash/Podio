@@ -20,3 +20,18 @@
 .tabular-nums {
   font-variant-numeric: tabular-nums;
 }
+
+
+.podcast-workspace-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+  width: 100%;
+}
+
+@media (min-width: 1024px) {
+  .podcast-workspace-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
