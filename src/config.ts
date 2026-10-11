@@ -1,4 +1,5 @@
 export const DEFAULT_TTS_MODEL = "gemini-3.8-flash-tts";
+export const TEXT_MODEL = "gemini-2.5-flash";
 
 // Clip model: always 30 seconds, MP3, 48 kHz stereo. Preview model; names and behavior may change.
 export const MUSIC_MODEL = "lyria-3-clip-preview";

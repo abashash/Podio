@@ -1,4 +1,4 @@
-import express from "express";
+import express, { type Request } from "express";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -7,7 +7,14 @@ import { promisify } from "node:util";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
-import { DEFAULT_TTS_MODEL, DEFAULT_VOICES, MUSIC_MODEL } from "./src/config.ts";
+import {
+  DEFAULT_TTS_MODEL,
+  DEFAULT_VOICES,
+  MUSIC_MODEL,
+  TEXT_MODEL,
+} from "./src/config.ts";
+import { parseScriptDirectives } from "./src/directives.ts";
+import { createTranslator, normalizeLocale } from "./src/i18n.ts";
 
 const execFileAsync = promisify(execFile);
 
@@ -26,6 +33,22 @@ const MODEL_NAME = DEFAULT_TTS_MODEL;
 const CHUNK_SIZE = 20;
 const MAX_RETRIES = 3;
 const RETRY_WAIT_MS = 5000;
+
+function getTranslator(req: Request): (key: string) => string {
+  const acceptLanguage = req.get("accept-language")?.split(",")[0]?.split("-")[0];
+  return createTranslator(normalizeLocale(req.body?.lang ?? req.query.lang ?? acceptLanguage));
+}
+
+function translateMessage(
+  t: (key: string) => string,
+  key: string,
+  values: Record<string, string | number> = {}
+): string {
+  return Object.entries(values).reduce(
+    (message, [name, value]) => message.replaceAll(`{${name}}`, String(value)),
+    t(key)
+  );
+}
 
 export type SupportedLang = "en" | "fa" | "ar";
 
@@ -274,6 +297,7 @@ async function startServer() {
 
   // GET /api/script?lang=en|fa|ar
   app.get("/api/script", async (req, res) => {
+    const t = getTranslator(req);
     try {
       const langParam = (req.query.lang as string) || "en";
       const validLangs: SupportedLang[] = ["en", "fa", "ar"];
@@ -285,13 +309,14 @@ async function startServer() {
       res.json({ lang, blocks, raw });
     } catch (error) {
       res.status(400).json({
-        error: error instanceof Error ? error.message : "Failed to load script",
+        error: t("Failed to load script"),
       });
     }
   });
 
   // POST /api/script with body { lang, content }
   app.post("/api/script", async (req, res) => {
+    const t = getTranslator(req);
     try {
       const { lang, content } = req.body as { lang?: string; content?: string };
       const validLangs: SupportedLang[] = ["en", "fa", "ar"];
@@ -300,7 +325,7 @@ async function startServer() {
         : "en";
 
       if (typeof content !== "string") {
-        res.status(400).json({ error: "content string is required." });
+        res.status(400).json({ error: t("content string is required.") });
         return;
       }
 
@@ -308,7 +333,10 @@ async function startServer() {
       if (errors.length > 0) {
         const firstErr = errors[0];
         res.status(400).json({
-          error: `Line ${firstErr.lineNum}: ${firstErr.problem}: "${firstErr.preview}"`,
+          error: translateMessage(t, "Script validation failed at line {line}: {problem}", {
+            line: firstErr.lineNum,
+            problem: firstErr.problem,
+          }),
           errors,
         });
         return;
@@ -321,13 +349,14 @@ async function startServer() {
       res.json({ ok: true, count: blocks.length, lang: targetLang });
     } catch (error) {
       res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to write script file.",
+        error: t("Failed to write script file."),
       });
     }
   });
 
   // GET /api/workspace for backwards compatibility
-  app.get("/api/workspace", async (_req, res) => {
+  app.get("/api/workspace", async (req, res) => {
+    const t = getTranslator(req);
     try {
       const [scriptContent, enScript] = await Promise.all([
         fs.readFile(path.join(__dirname, "make_podcast.py"), "utf-8"),
@@ -339,17 +368,18 @@ async function startServer() {
       res.json({ scriptContent, blocks: enScript.blocks });
     } catch (error) {
       res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to load workspace files.",
+        error: t("Failed to load workspace files."),
       });
     }
   });
 
   // POST /api/blocks writes to blocks.edited.json
   app.post("/api/blocks", async (req, res) => {
+    const t = getTranslator(req);
     try {
       const { blocks } = req.body as { blocks: PodcastBlock[] };
       if (!Array.isArray(blocks) || blocks.length === 0) {
-        res.status(400).json({ error: "blocks must be a non-empty array." });
+        res.status(400).json({ error: t("blocks must be a non-empty array.") });
         return;
       }
       await fs.writeFile(
@@ -360,27 +390,115 @@ async function startServer() {
       res.json({ ok: true, count: blocks.length, file: "blocks.edited.json" });
     } catch (error) {
       res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to save blocks.edited.json.",
+        error: t("Failed to save blocks.edited.json."),
       });
     }
   });
 
   // GET /api/synthesize/status
-  app.get("/api/synthesize/status", (_req, res) => {
-    res.json(synthesisStatus);
+  app.get("/api/synthesize/status", (req, res) => {
+    const t = getTranslator(req);
+    res.json({ ...synthesisStatus, message: t(synthesisStatus.message) });
+  });
+
+  // POST /api/script/generate - Draft and validate a podcast script from a short request.
+  app.post("/api/script/generate", async (req, res) => {
+    const t = getTranslator(req);
+    const { request, lang } = req.body as { request?: string; lang?: string };
+    if (!request?.trim()) {
+      res.status(400).json({ error: t("A short request is required.") });
+      return;
+    }
+    if (!process.env.GEMINI_API_KEY) {
+      res.status(400).json({
+        error: t("GEMINI_API_KEY is missing. Please define it in .env.local or .env."),
+      });
+      return;
+    }
+
+    const locale = normalizeLocale(lang);
+    const languageName = { en: "English", fa: "Persian", ar: "Arabic" }[locale];
+    const model = process.env.TEXT_MODEL?.trim() || TEXT_MODEL;
+    const basePrompt = [
+      `Write an editable two-speaker podcast script in ${languageName}. Follow any language explicitly named in the request.`,
+      "Use only dialogue lines in the exact format: Rami | Style | spoken text or Leda | Style | spoken text.",
+      "Do not include markdown, code fences, headings, or script markers.",
+      "Estimate the dialogue length from the requested duration at about 140 spoken words per minute.",
+      "Include these three valid music directives before the dialogue:",
+      "#MUSIC_PROMPT: Instrumental background music that suits the podcast subject and language; no vocals.",
+      "#MUSIC: anchor=start clip=0-8 volume=-18 fade=1,1 duck=on",
+      "#MUSIC: anchor=end clip=22-30 volume=-18 fade=1,1 duck=off",
+      "Alternate naturally between Rami and Leda, use concise style labels, and make the conversation coherent.",
+      `User request: ${request.trim()}`,
+    ].join("\n");
+
+    let lastError: unknown;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const response = await getGenAIClient().models.generateContent({
+          model,
+          contents: [
+            {
+              role: "user",
+              parts: [{
+                text: attempt === 0
+                  ? basePrompt
+                  : `${basePrompt}\n\nThe previous result was invalid: ${lastError instanceof Error ? lastError.message : String(lastError)}. Return a corrected complete script only.`,
+              }],
+            },
+          ],
+          config: {
+            temperature: 0.7,
+            responseMimeType: "text/plain",
+          },
+        });
+
+        const script = response.text?.trim() || "";
+        if (!script) {
+          throw new Error("The text model returned an empty script.");
+        }
+        const parsed = parseScriptText(script);
+        if (parsed.errors.length > 0 || parsed.blocks.length === 0) {
+          const firstError = parsed.errors[0];
+          throw new Error(firstError
+            ? `Line ${firstError.lineNum}: ${firstError.problem}`
+            : "The script contains no dialogue lines.");
+        }
+        const directives = parseScriptDirectives(script, parsed.blocks.length);
+        if (directives.errors.length > 0 || !directives.musicPrompt) {
+          throw new Error(directives.errors[0]?.problem || "The script has no music prompt.");
+        }
+        const hasStartMusic = directives.musicDirectives.some((d) => d.anchorType === "start");
+        const hasEndMusic = directives.musicDirectives.some((d) => d.anchorType === "end");
+        if (!hasStartMusic || !hasEndMusic) {
+          throw new Error("The script must place music at both the start and end.");
+        }
+
+        res.json({ script, model });
+        return;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    console.error("Failed to generate a valid podcast script:", lastError);
+    res.status(502).json({
+      error: t("Could not draft a valid script. Check the request and try again."),
+    });
   });
 
   // POST /api/music/generate - Generates 30s background music clip using Lyria 3 via Interactions API
   app.post("/api/music/generate", async (req, res) => {
+    const t = getTranslator(req);
     const { prompt } = req.body as { prompt?: string };
     if (!prompt || !prompt.trim()) {
-      res.status(400).json({ error: "Music prompt is required." });
+      res.status(400).json({ error: t("Music prompt is required.") });
       return;
     }
 
     const apiKey = process.env.GEMINI_API_KEY || "";
     if (!apiKey) {
-      res.status(500).json({ error: "GEMINI_API_KEY is not configured on the server." });
+      res.status(500).json({ error: t("GEMINI_API_KEY is not configured on the server.") });
       return;
     }
 
@@ -424,7 +542,7 @@ async function startServer() {
       }
 
       if (!audioBase64) {
-        res.status(502).json({ error: "No audio data returned by Lyria music model." });
+        res.status(502).json({ error: t("No audio data returned by Lyria music model.") });
         return;
       }
 
@@ -435,15 +553,17 @@ async function startServer() {
         model: MUSIC_MODEL,
       });
     } catch (err: any) {
-      res.status(500).json({ error: err?.message || String(err) });
+      console.error("Music generation failed:", err);
+      res.status(500).json({ error: t("Music generation failed.") });
     }
   });
 
   // POST /api/synthesize with body { lang, blocks }
   app.post("/api/synthesize", async (req, res) => {
+    const t = getTranslator(req);
     if (!process.env.GEMINI_API_KEY) {
       res.status(400).json({
-        error: "GEMINI_API_KEY is missing. Please define it in .env.local or .env.",
+        error: t("GEMINI_API_KEY is missing. Please define it in .env.local or .env."),
       });
       return;
     }
@@ -468,7 +588,7 @@ async function startServer() {
         : "en";
 
       if (!Array.isArray(blocks) || blocks.length === 0) {
-        res.status(400).json({ error: "Provide at least one dialogue block to synthesize." });
+        res.status(400).json({ error: t("Provide at least one dialogue block to synthesize.") });
         return;
       }
 
@@ -478,13 +598,17 @@ async function startServer() {
         const lineDisplay = b.lineNum ?? i + 1;
         if (!b.speaker || (b.speaker !== "Rami" && b.speaker !== "Leda")) {
           res.status(400).json({
-            error: `Line ${lineDisplay}: Speaker must be exactly 'Rami' or 'Leda'`,
+            error: translateMessage(t, "Line {line}: Speaker must be exactly 'Rami' or 'Leda'", {
+              line: lineDisplay,
+            }),
           });
           return;
         }
         if (typeof b.text !== "string" || !b.text.trim()) {
           res.status(400).json({
-            error: `Line ${lineDisplay}: Dialogue text is empty`,
+            error: translateMessage(t, "Line {line}: Dialogue text is empty", {
+              line: lineDisplay,
+            }),
           });
           return;
         }
@@ -497,7 +621,10 @@ async function startServer() {
         state: "in_progress",
         chunksDone: 0,
         chunksTotal: totalChunks,
-        message: `Starting synthesis (0 of ${totalChunks} chunks)`,
+        message: translateMessage(t, "Starting synthesis ({done} of {total} chunks)", {
+          done: 0,
+          total: totalChunks,
+        }),
       };
 
       const ai = getGenAIClient();
@@ -603,10 +730,16 @@ async function startServer() {
                 state: "error",
                 chunksDone: chunkIdx,
                 chunksTotal: totalChunks,
-                message: `Chunk ${chunkIdx + 1}/${totalChunks} failed after ${MAX_RETRIES} retries.`,
+                message: translateMessage(t, "Chunk {chunk} failed after {retries} retries.", {
+                  chunk: `${chunkIdx + 1}/${totalChunks}`,
+                  retries: MAX_RETRIES,
+                }),
               };
               res.status(502).json({
-                error: `Chunk ${chunkIdx + 1}/${totalChunks} covering blocks ${firstBlockNum} to ${lastBlockNum} failed after ${MAX_RETRIES} retries: ${errMsg}`,
+                error: `${translateMessage(t, "Chunk {chunk} failed after {retries} retries.", {
+                  chunk: `${chunkIdx + 1}/${totalChunks}`,
+                  retries: MAX_RETRIES,
+                })} ${errMsg}`,
               });
               return;
             }
@@ -627,7 +760,10 @@ async function startServer() {
             state: "in_progress",
             chunksDone: chunkIdx + 1,
             chunksTotal: totalChunks,
-            message: `Completed chunk ${chunkIdx + 1} of ${totalChunks}`,
+            message: translateMessage(t, "Completed chunk {done} of {total}", {
+              done: chunkIdx + 1,
+              total: totalChunks,
+            }),
           };
         } else if (lastError) {
           throw lastError;
@@ -671,7 +807,7 @@ async function startServer() {
       } catch (ffmpegErr: any) {
         console.error("FFmpeg conversion error:", ffmpegErr?.message || ffmpegErr);
         if (ffmpegErr && ffmpegErr.code === "ENOENT") {
-          const warningMessage = "ffmpeg is not installed; returning WAV.";
+          const warningMessage = t("ffmpeg is not installed; returning WAV.");
           synthesisStatus = {
             state: "done",
             chunksDone: totalChunks,
@@ -688,7 +824,9 @@ async function startServer() {
           return;
         }
 
-        const warningMessage = `MP3 conversion failed (${ffmpegErr.message}); returning WAV.`;
+        const warningMessage = translateMessage(t, "MP3 conversion failed ({error}); returning WAV.", {
+          error: ffmpegErr.message,
+        });
         synthesisStatus = {
             state: "done",
             chunksDone: totalChunks,
@@ -709,7 +847,7 @@ async function startServer() {
         state: "done",
         chunksDone: totalChunks,
         chunksTotal: totalChunks,
-        message: "Synthesis and MP3 conversion done",
+        message: t("Synthesis and MP3 conversion done"),
       };
 
       res.status(200).json({
@@ -719,7 +857,9 @@ async function startServer() {
         chunkLogs,
       });
     } catch (error) {
-      const errMsg = error instanceof Error ? error.message : "Unexpected error during podcast synthesis.";
+      const errMsg = error instanceof Error
+        ? error.message
+        : t("Unexpected error during podcast synthesis.");
       synthesisStatus = {
         state: "error",
         chunksDone: 0,
@@ -731,8 +871,8 @@ async function startServer() {
   });
 
   // Catch-all for unknown /api routes: return JSON 404, never fallback to HTML index.html
-  app.all("/api/*", (_req, res) => {
-    res.status(404).json({ error: "Not found" });
+  app.all("/api/*", (req, res) => {
+    res.status(404).json({ error: getTranslator(req)("Not found") });
   });
 
   const distPath = path.join(__dirname, "dist");
