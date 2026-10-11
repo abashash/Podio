@@ -1,4 +1,7 @@
 === SCRIPT START ===
+#MUSIC_PROMPT: Instrumental only, warm Persian-inspired background music.
+#MUSIC: anchor=start clip=0-10 volume=-18 fade=1.5,2 duck=on
+#MUSIC: anchor=end clip=20-30 volume=-18 fade=0,4 duck=off
 Rami | Promote | [excited] سلام! شما به اِستودیوی تُوپِرشیا خوش اومدید. [calm] من آرشم و این هم سارا.
 Leda | Friendly | [amused] آرش، همیشه همینجوری شروع میکنی! [warmly] سلام به همه شنوندگان عزیز.
 Rami | Curious | [curious] سارا، فکر میکنی این مدل صوتی جدید چقدر میتونه مکالمه واقعی رو شبیه سازی کنه؟

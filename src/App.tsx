@@ -836,7 +836,72 @@ export default function App() {
     const chunkLogs: ChunkLog[] = [];
     let detectedMimeType = "audio/L16;rate=24000";
 
+    const directives = parseScriptDirectives(scriptRawText, blocks.length);
+    if (directives.errors.length > 0) {
+      setSynthError(`Directive error on line ${directives.errors[0].lineNum}: ${directives.errors[0].problem}`);
+      setSynthesizing(false);
+      return;
+    }
+
+    const musicPromptFromScript = directives.musicPrompt?.trim();
+    let currentMusicClips: MusicClip[] = [...musicClips];
+
     try {
+      // If #MUSIC_PROMPT is specified in the box, send it to lyria-3-clip-preview once
+      if (musicPromptFromScript) {
+        setProgress({
+          state: "in_progress",
+          chunksDone: 0,
+          chunksTotal: totalChunks,
+          message: "Generating background music (Lyria 3)...",
+        });
+
+        addRequest();
+        setTodayUsage(getToday());
+        setSessionRequests((prev) => prev + 1);
+
+        const musicRes = await fetch("/api/music/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt: musicPromptFromScript }),
+        });
+
+        if (!musicRes.ok) {
+          if (musicRes.status === 429) {
+            setRequestsExhausted(usageLimits.dailyRequests);
+            setTodayUsage(getToday());
+            throw new Error(
+              "Quota exceeded for this key today. Try again after the quota resets or enable billing."
+            );
+          }
+          const errJson = await musicRes.json().catch(() => ({}));
+          throw new Error(
+            errJson.error?.message || errJson.error || `Failed to generate music (${musicRes.status})`
+          );
+        }
+
+        const data = await musicRes.json();
+        if (!data.audioBase64) {
+          throw new Error("Lyria music API did not return audio data.");
+        }
+
+        const binary = atob(data.audioBase64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        const blob = new Blob([bytes], { type: data.mimeType || "audio/mp3" });
+        const audioUrl = URL.createObjectURL(blob);
+
+        const newClip: MusicClip = {
+          id: `clip_${Date.now()}_1`,
+          clipNumber: 1,
+          base64: data.audioBase64,
+          audioUrl,
+          durationSeconds: 30,
+        };
+        currentMusicClips = [newClip];
+        setMusicClips([newClip]);
+        setMusicEnabled(true);
+      }
       for (let chunkIdx = 0; chunkIdx < totalChunks; chunkIdx++) {
         const startIdx = chunkIdx * CHUNK_SIZE;
         const endIdx = Math.min(startIdx + CHUNK_SIZE, totalBlocks);
@@ -999,12 +1064,13 @@ export default function App() {
       );
       const timestamp = Date.now();
 
-      // Check if background music is enabled and has clips and placements
+      // Check if background music was requested via #MUSIC_PROMPT
+      const hasMusicPrompt = Boolean(musicPromptFromScript && currentMusicClips.length > 0);
       const effectivePlacements: MusicPlacement[] =
-        parsedDirectives.musicDirectives.length > 0 && musicClips.length > 0
-          ? parsedDirectives.musicDirectives.map((d, dIdx) => ({
+        hasMusicPrompt && directives.musicDirectives.length > 0
+          ? directives.musicDirectives.map((d, dIdx) => ({
               id: `dir_p_${dIdx + 1}`,
-              clipId: musicClips[0]?.id || "clip_1",
+              clipId: currentMusicClips[0]?.id || "clip_1",
               anchor:
                 d.anchorType === "before"
                   ? "before_block"
@@ -1020,11 +1086,11 @@ export default function App() {
               fadeOut: d.fadeOut,
               duckSpeech: d.duckSpeech,
             }))
-          : musicPlacements;
+          : [];
 
       const shouldMixMusic =
-        musicEnabled &&
-        musicClips.length > 0 &&
+        hasMusicPrompt &&
+        currentMusicClips.length > 0 &&
         (effectivePlacements.length > 0 || (audioOutput.musicLeadIn > 0 || audioOutput.musicTail > 0));
 
       if (!shouldMixMusic) {
@@ -1078,13 +1144,13 @@ export default function App() {
           message: "Mixing background music placements...",
         });
 
-        const blockTimings = computeBlockTimings(parsedBlocks, chunkLogs, rate);
+        const blockTimings = computeBlockTimings(blocks, chunkLogs, rate);
         const mixed = await mixPodcastWithMusicPlacements({
           speechPcm: combinedPcm,
-          clips: musicClips,
+          clips: currentMusicClips,
           placements: effectivePlacements,
           blockTimings,
-          musicModes: parsedDirectives.musicModeDirectives.map((m) => ({
+          musicModes: directives.musicModeDirectives.map((m) => ({
             startBlock: m.startBlock,
             endBlock: m.endBlock,
             mode: m.mode,
@@ -1097,7 +1163,7 @@ export default function App() {
         });
 
         const audioUrl = URL.createObjectURL(mixed.blob);
-        const fileName = `podcast_${selectedLang}_${timestamp}_music.${mixed.extension}`;
+        const fileName = `podcast_${selectedLang}_${timestamp}.${mixed.extension}`;
 
         setProgress({
           state: "done",
@@ -2021,53 +2087,24 @@ export default function App() {
 
                   {musicEnabled && (
                     <div className="space-y-3 pt-2 border-t border-white/[0.06]">
-                      {/* Prompt textarea */}
-                      <div className="space-y-1">
+                      {/* Music Prompt Source Info */}
+                      <div className="space-y-1.5 p-3 bg-[#18181b] border border-white/[0.06] rounded-xl text-xs">
                         <div className="flex items-center justify-between text-[11px] text-[#a1a1aa]">
-                          <label>Music description:</label>
-                          <span className="font-mono">{musicPrompt.length} chars</span>
+                          <span className="font-semibold text-white">Music Prompt</span>
+                          <span className="font-mono text-[#c4ff3d]">#MUSIC_PROMPT</span>
                         </div>
-                        <textarea
-                          rows={3}
-                          value={musicPrompt}
-                          onChange={(e) => handleMusicPromptChange(e.target.value)}
-                          placeholder="Instrumental only, no vocals. Warm, calm Persian-inspired background music with ney, santur and soft strings, around 75 BPM, gentle and friendly."
-                          className="w-full bg-[#121214] border border-white/[0.1] rounded-lg p-2 text-xs text-white placeholder-[#52525b] focus:outline-none focus:border-[#c4ff3d]"
-                        />
-                      </div>
-
-                      {/* Generate / Cancel music button */}
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleGenerateMusic(false)}
-                          disabled={
-                            generatingMusic ||
-                            (!musicPrompt.trim() && !parsedDirectives.musicPrompt?.trim())
-                          }
-                          className="flex-1 py-2 px-3 text-xs font-semibold text-[#0a0a0b] bg-[#c4ff3d] rounded-lg hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-1.5"
-                        >
-                          {generatingMusic ? (
-                            <>
-                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                              <span>Generating clip...</span>
-                            </>
-                          ) : (
-                            <>
-                              <Sparkles className="w-3.5 h-3.5" />
-                              <span>{musicClips.length > 0 ? "Regenerate music" : "Create music"}</span>
-                            </>
-                          )}
-                        </button>
-                        {generatingMusic && (
-                          <button
-                            type="button"
-                            onClick={handleCancelMusic}
-                            className="py-2 px-3 text-xs font-medium text-white bg-[#18181b] hover:bg-white/[0.08] border border-white/[0.1] rounded-lg transition-colors"
-                          >
-                            Cancel
-                          </button>
+                        {parsedDirectives.musicPrompt ? (
+                          <p className="text-white font-mono text-xs italic bg-[#121214] p-2.5 rounded-lg border border-white/[0.06]">
+                            &quot;{parsedDirectives.musicPrompt}&quot;
+                          </p>
+                        ) : (
+                          <p className="text-[#a1a1aa] text-[11px] italic">
+                            No <code className="text-[#c4ff3d]">#MUSIC_PROMPT:</code> line detected in the script box. Write <code className="text-[#c4ff3d]">#MUSIC_PROMPT: &lt;music description&gt;</code> inside the script box to generate background music.
+                          </p>
                         )}
+                        <p className="text-[11px] text-[#71717a] pt-1 leading-relaxed">
+                          When you press <strong className="text-white">&quot;Create podcast&quot;</strong>, the app sends this prompt to <code className="text-[#c4ff3d]">lyria-3-clip-preview</code> and places the music according to your <code className="text-[#c4ff3d]">#MUSIC</code> lines.
+                        </p>
                       </div>
 
                       {musicError && (
@@ -2081,15 +2118,6 @@ export default function App() {
                         <div className="space-y-2 pt-1 border-t border-white/[0.05]">
                           <div className="flex items-center justify-between text-xs font-semibold text-white">
                             <span>Generated Clips ({musicClips.length})</span>
-                            <button
-                              type="button"
-                              onClick={() => handleGenerateMusic(true)}
-                              disabled={generatingMusic || !musicPrompt.trim()}
-                              className="text-[11px] text-[#c4ff3d] hover:underline flex items-center gap-1"
-                            >
-                              <Plus className="w-3 h-3" />
-                              Generate another clip
-                            </button>
                           </div>
                           {musicClips.map((clip) => (
                             <div key={clip.id} className="p-2 bg-[#121214] border border-white/[0.06] rounded-lg space-y-1.5">
@@ -2349,27 +2377,49 @@ export default function App() {
 
               {openCreatePodcast && (
                 <div id="card-create-podcast-body" className="p-4 sm:p-5 pt-0 space-y-4 border-t border-white/[0.06]">
-                  {/* Generate Podcast Button */}
-                  <button
-                    type="button"
-                    onClick={handleSynthesize}
-                    disabled={synthesizing || validationErrors.length > 0 || totalBlocks === 0}
-                    className="w-full py-3.5 px-4 text-xs sm:text-sm font-semibold text-[#0a0a0b] bg-[#c4ff3d] rounded-xl hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(196,255,61,0.25)]"
-                  >
-                    {synthesizing ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>
-                          Synthesizing ({progress?.chunksDone || 0}/{progress?.chunksTotal || chunksCount})...
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-4 h-4 fill-current" />
-                        <span>Generate Podcast</span>
-                      </>
-                    )}
-                  </button>
+                  {/* Create podcast button with format choice next to it */}
+                  <div className="flex items-center gap-2.5">
+                    <button
+                      type="button"
+                      onClick={handleSynthesize}
+                      disabled={synthesizing || validationErrors.length > 0 || totalBlocks === 0}
+                      className="flex-1 py-3 px-4 text-xs sm:text-sm font-semibold text-[#0a0a0b] bg-[#c4ff3d] rounded-xl hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(196,255,61,0.25)]"
+                    >
+                      {synthesizing ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>
+                            {progress?.message || `Synthesizing (${progress?.chunksDone || 0}/${progress?.chunksTotal || chunksCount})...`}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-4 h-4 fill-current" />
+                          <span>Create podcast</span>
+                        </>
+                      )}
+                    </button>
+
+                    <div className="flex items-center p-1 bg-[#18181b] border border-white/[0.1] rounded-xl shrink-0">
+                      {(["mp3", "wav"] as const).map((fmt) => {
+                        const isSelected = audioOutput.format === fmt;
+                        return (
+                          <button
+                            key={fmt}
+                            type="button"
+                            onClick={() => handleAudioOutputChange({ format: fmt })}
+                            className={`px-3 py-1.5 text-xs font-mono font-semibold rounded-lg uppercase transition-all ${
+                              isSelected
+                                ? "bg-[#c4ff3d] text-[#0a0a0b] shadow-sm"
+                                : "text-[#a1a1aa] hover:text-white"
+                            }`}
+                          >
+                            {fmt}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
 
                   {/* Live Synthesis Progress */}
                   {synthesizing && progress && (
@@ -2501,7 +2551,7 @@ export default function App() {
                         ))}
                       </div>
                       <p className="text-xs text-[#a1a1aa] leading-relaxed">
-                        Click <strong className="text-white">Generate Podcast</strong> to synthesize audio and display the waveform player.
+                        Click <strong className="text-white">Create podcast</strong> to synthesize audio and display the waveform player.
                       </p>
                     </div>
                   )}
