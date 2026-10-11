@@ -228,5 +228,6 @@
   "This app counts usage locally; official quota can be lower.": "يحسب التطبيق الاستخدام محليًا؛ وقد تكون الحصة الرسمية أقل.",
   "Not found": "غير موجود",
   "Placements: {placements}": "المواضع: {placements}",
-  "Clip #{number} ({duration})": "المقطع رقم {number} ({duration})"
+  "Clip #{number} ({duration})": "المقطع رقم {number} ({duration})",
+  "When you press Create podcast, the app generates music from this prompt and places it according to your #MUSIC lines.": "عند اختيار «إنشاء بودكاست»، ينشئ التطبيق الموسيقى من هذا الوصف ويضعها وفق أسطر #MUSIC."
 }

@@ -228,5 +228,6 @@
   "This app counts usage locally; official quota can be lower.": "This app counts usage locally; official quota can be lower.",
   "Not found": "Not found",
   "Placements: {placements}": "Placements: {placements}",
-  "Clip #{number} ({duration})": "Clip #{number} ({duration})"
+  "Clip #{number} ({duration})": "Clip #{number} ({duration})",
+  "When you press Create podcast, the app generates music from this prompt and places it according to your #MUSIC lines.": "When you press Create podcast, the app generates music from this prompt and places it according to your #MUSIC lines."
 }

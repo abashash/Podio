@@ -228,5 +228,6 @@
   "This app counts usage locally; official quota can be lower.": "این برنامه مصرف را محلی می‌شمارد؛ سهمیهٔ رسمی ممکن است کمتر باشد.",
   "Not found": "یافت نشد",
   "Placements: {placements}": "جای‌گذاری‌ها: {placements}",
-  "Clip #{number} ({duration})": "قطعهٔ #{number} ({duration})"
+  "Clip #{number} ({duration})": "قطعهٔ #{number} ({duration})",
+  "When you press Create podcast, the app generates music from this prompt and places it according to your #MUSIC lines.": "با انتخاب «ساخت پادکست»، برنامه از این درخواست موسیقی می‌سازد و آن را طبق خط‌های #MUSIC جای‌گذاری می‌کند."
 }

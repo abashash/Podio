@@ -20,7 +20,7 @@ export interface AudioOutputConfig {
 }
 
 export const DEFAULT_AUDIO_OUTPUT: AudioOutputConfig = {
-  format: "wav",
+  format: "mp3",
   sampleRate: 24000,
   channels: "mono",
   mp3Bitrate: 128,
