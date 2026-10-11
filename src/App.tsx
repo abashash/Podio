@@ -1143,7 +1143,17 @@ export default function App() {
 
   const isRtl = selectedLang === "fa" || selectedLang === "ar";
 
-  const [activeSecondaryTab, setActiveSecondaryTab] = useState<"cli" | "spec" | null>(null);
+  const [openModels, setOpenModels] = useState<boolean>(true);
+  const [openVoices, setOpenVoices] = useState<boolean>(true);
+  const [openOutput, setOpenOutput] = useState<boolean>(true);
+  const [openMusic, setOpenMusic] = useState<boolean>(true);
+  const [openCreatePodcast, setOpenCreatePodcast] = useState<boolean>(true);
+  const [openAdvanced, setOpenAdvanced] = useState<boolean>(false);
+
+  const [openToolsRef, setOpenToolsRef] = useState<boolean>(false);
+  const [openUsage, setOpenUsage] = useState<boolean>(false);
+  const [openCli, setOpenCli] = useState<boolean>(false);
+  const [openSpecs, setOpenSpecs] = useState<boolean>(false);
   const [isDark, setIsDark] = useState<boolean>(true);
 
   return (
@@ -1202,7 +1212,7 @@ export default function App() {
       </header>
 
       {/* Main Container */}
-      <main className="max-w-[1360px] w-full mx-auto px-4 sm:px-6 py-6 flex-1 flex flex-col gap-6">
+      <main className="max-w-[1280px] w-full mx-auto px-4 sm:px-6 py-6 flex-1 flex flex-col gap-6">
         {/* 2. Hero (small, centered, above the workspace) */}
         <div className="text-center py-2 max-w-2xl mx-auto space-y-2">
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
@@ -1213,12 +1223,12 @@ export default function App() {
           </p>
         </div>
 
-        {/* 3. Workspace Grid (2 columns desktop: ~2/3 left, ~1/3 right; 1 column < 860px) */}
-        <div className="grid grid-cols-1 min-[860px]:grid-cols-12 gap-6 items-start">
-          {/* Left Column (~2/3, col-span-8): Script Editor Card */}
-          <div className="min-[860px]:col-span-8 bg-[#121214] border border-white/[0.08] rounded-[20px] p-5 sm:p-6 flex flex-col gap-4 shadow-xl">
-            {/* Top row inside card: title "Script" and live counters on the end side */}
-            <div className="flex items-center justify-between pb-3.5 border-b border-white/[0.07] gap-3">
+        {/* 3. Workspace Grid (2 equal columns on desktop: 1fr 1fr; 1 column < 1024px) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start w-full">
+          {/* Left Column (50% on desktop): Script Editor Card */}
+          <div className="w-full min-w-0 bg-[#121214] border border-white/[0.08] rounded-[20px] p-5 sm:p-6 flex flex-col gap-4 shadow-xl">
+            {/* Top row inside card: title "Script", language buttons, and live counters on the end side */}
+            <div className="flex flex-wrap items-center justify-between pb-3.5 border-b border-white/[0.07] gap-3">
               <div className="flex items-center gap-2">
                 <FileText className="w-4 h-4 text-[#c4ff3d]" />
                 <span className="text-sm font-semibold text-white tracking-wide">
@@ -1228,9 +1238,35 @@ export default function App() {
                   script.{selectedLang}.txt
                 </span>
               </div>
+
+              {/* Language buttons (فارسی / English / العربية) */}
+              <div className="flex items-center gap-1 p-0.5 bg-[#18181b] border border-white/[0.08] rounded-full">
+                {(
+                  [
+                    { id: "fa", label: "فارسی" },
+                    { id: "en", label: "English" },
+                    { id: "ar", label: "العربية" },
+                  ] as const
+                ).map((langItem) => (
+                  <button
+                    key={langItem.id}
+                    type="button"
+                    onClick={() => handleLanguageChange(langItem.id)}
+                    className={`px-2.5 py-1 text-xs rounded-full transition-all whitespace-nowrap ${
+                      selectedLang === langItem.id
+                        ? "bg-[#c4ff3d] text-[#0a0a0b] font-semibold shadow-sm"
+                        : "text-[#a1a1aa] hover:text-white"
+                    }`}
+                  >
+                    {langItem.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Counts line: N lines · X Rami · Y Leda */}
               <div className="flex items-center gap-2 text-xs font-mono text-[#a1a1aa] flex-wrap justify-end">
                 <span>
-                  <strong className="text-white font-medium">{totalBlocks}</strong> blocks
+                  <strong className="text-white font-medium">{totalBlocks}</strong> lines
                 </span>
                 <span className="text-[#52525b]">·</span>
                 <span>
@@ -1247,15 +1283,15 @@ export default function App() {
               </div>
             </div>
 
-            {/* Middle: large textarea */}
+            {/* Middle: large textarea (min 24 rows) */}
             <textarea
               id="script-textarea"
-              rows={19}
+              rows={24}
               dir="auto"
               value={scriptRawText}
               onChange={(e) => handleTextareaChange(e.target.value)}
               placeholder="=== SCRIPT START ===&#10;Rami | Promote | [excited] Welcome to our podcast!&#10;Leda | Friendly | [warmly] Thanks for joining us today!&#10;=== SCRIPT END ==="
-              className={`w-full p-4 sm:p-5 text-xs sm:text-sm font-mono bg-[#18181b] border rounded-xl focus:outline-none focus:border-[#c4ff3d] leading-relaxed text-[#f5f5f7] placeholder:text-[#52525b] transition-all resize-y min-h-[440px] ${
+              className={`w-full p-4 sm:p-5 text-xs sm:text-sm font-mono bg-[#18181b] border rounded-xl focus:outline-none focus:border-[#c4ff3d] leading-relaxed text-[#f5f5f7] placeholder:text-[#52525b] transition-all resize-y min-h-[480px] ${
                 validationErrors.length > 0 ? "border-red-800" : "border-white/[0.08]"
               } ${isRtl ? "text-right" : "text-left"}`}
             />
@@ -1476,303 +1512,686 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Total Output Length with Lead-in and Tail */}
+                {/* Total Output Length */}
                 <div className="p-2.5 bg-[#121214] border border-white/[0.06] rounded-lg flex flex-wrap items-center justify-between text-xs font-mono text-[#a1a1aa]">
                   <span>Timeline duration preview:</span>
                   <span className="text-white font-medium">
-                    Speech: ~{((parsedBlocks.reduce((acc, b) => acc + countWords(b.text), 0) / 150) * 60).toFixed(1)}s + Lead-in: {audioOutput.musicLeadIn}s + Tail: {audioOutput.musicTail}s = Total ~{(
-                      (parsedBlocks.reduce((acc, b) => acc + countWords(b.text), 0) / 150) * 60 +
-                      audioOutput.musicLeadIn +
-                      audioOutput.musicTail
-                    ).toFixed(1)}s
+                    Speech: ~{((parsedBlocks.reduce((acc, b) => acc + countWords(b.text), 0) / 150) * 60).toFixed(1)}s
                   </span>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Right Column (~1/3, col-span-4): Settings & Player Cards */}
-          <div className="min-[860px]:col-span-4 flex flex-col gap-6">
-            {/* Card 1: Voice Cast & Synthesis Controls */}
-            <div className="bg-[#121214] border border-white/[0.08] rounded-[20px] p-5 sm:p-6 space-y-5 shadow-xl">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Users className="w-4 h-4 text-[#c4ff3d]" />
-                  <span className="text-sm font-semibold text-white">Voice Cast &amp; Model</span>
+          {/* Right Column (50% on desktop): Stack of Collapsible Cards */}
+          <div className="w-full min-w-0 flex flex-col gap-4">
+            {/* Card 1: Models */}
+            <div className="bg-[#121214] border border-white/[0.08] rounded-[20px] shadow-xl overflow-hidden">
+              <div
+                className="w-full flex items-center justify-between p-4 sm:p-5 cursor-pointer select-none hover:bg-white/[0.02] transition-colors"
+                onClick={() => setOpenModels(!openModels)}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Layers className="w-4 h-4 text-[#c4ff3d]" />
+                  <span className="text-sm font-semibold text-white tracking-wide">Models</span>
                 </div>
-                <span className="text-[11px] text-[#52525b] font-mono">
-                  Conversational
-                </span>
+                <button
+                  type="button"
+                  aria-expanded={openModels}
+                  aria-controls="card-models-body"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpenModels(!openModels);
+                  }}
+                  className="p-1 rounded-lg text-[#a1a1aa] hover:text-white hover:bg-white/[0.08] transition-colors focus:outline-none"
+                  title={openModels ? "Collapse" : "Expand"}
+                >
+                  <ChevronDown
+                    className={`w-4 h-4 transform transition-transform duration-200 ${openModels ? "rotate-180" : ""}`}
+                  />
+                </button>
               </div>
 
-              {/* TTS Model Selector Checkbox List */}
-              <div className="p-3.5 bg-[#18181b] border border-white/[0.06] rounded-xl space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-white">TTS Model</span>
-                  <span className="text-[11px] text-[#a1a1aa] font-mono">
-                    {effectiveModel}
-                  </span>
-                </div>
-
-                {/* Checkbox list for KNOWN_TTS_MODELS: gemini-3.8-flash-tts is checked by default */}
-                <div className="space-y-1.5">
-                  {KNOWN_TTS_MODELS.map((opt) => {
-                    const isChecked = selectedModel === opt.value;
-                    return (
-                      <label
-                        key={opt.value}
-                        onClick={() => handleModelChange(opt.value)}
-                        className={`flex items-center justify-between p-2 rounded-lg border cursor-pointer transition-all ${
-                          isChecked
-                            ? "bg-[#c4ff3d]/10 border-[#c4ff3d]/40 text-white"
-                            : "bg-[#121214] border-white/[0.06] text-[#a1a1aa] hover:border-white/[0.15] hover:text-white"
-                        }`}
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => handleModelChange(opt.value)}
-                            className="w-3.5 h-3.5 rounded border-white/20 text-[#c4ff3d] accent-[#c4ff3d] focus:ring-0 cursor-pointer"
-                          />
-                          <span className="text-xs font-mono">{opt.label}</span>
-                        </div>
-                        {isChecked && (
-                          <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-[#c4ff3d]/20 text-[#c4ff3d]">
-                            Active
-                          </span>
-                        )}
-                      </label>
-                    );
-                  })}
-                </div>
-
-                {selectedModel === "custom" && (
-                  <div className="space-y-1 pt-1 border-t border-white/[0.05]">
-                    <label className="text-[11px] text-[#a1a1aa]">Custom Model Name:</label>
-                    <input
-                      type="text"
-                      value={customModelInput}
-                      onChange={(e) => handleCustomModelChange(e.target.value)}
-                      placeholder={`e.g. ${DEFAULT_TTS_MODEL}`}
-                      className="w-full bg-[#121214] border border-white/[0.1] rounded-lg px-3 py-2 text-xs text-white placeholder-[#52525b] focus:outline-none focus:border-[#c4ff3d] font-mono"
-                    />
-                  </div>
-                )}
-
-                <p className="text-[11px] text-[#a1a1aa] leading-relaxed pt-1 border-t border-white/[0.05]">
-                  Voices: Rami (Speaker 1), Leda (Speaker 2). Some models may not support multi-speaker mode; if synthesis fails with an unsupported-model error, choose the default model.
-                </p>
-              </div>
-
-              {/* Music Model Section */}
-              <div className="p-3.5 bg-[#18181b] border border-white/[0.06] rounded-xl space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Music className="w-3.5 h-3.5 text-[#c4ff3d]" />
-                    <span className="text-xs font-semibold text-white">Music model</span>
-                  </div>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={musicEnabled}
-                      onChange={(e) => handleToggleMusic(e.target.checked)}
-                      className="w-3.5 h-3.5 rounded border-white/20 text-[#c4ff3d] accent-[#c4ff3d] focus:ring-0 cursor-pointer"
-                    />
-                    <span className="text-xs text-white font-medium">Generate background music</span>
-                  </label>
-                </div>
-
-                {/* Music model options (radio list, disabled but visible when musicEnabled is false) */}
-                <div className={`space-y-1.5 transition-opacity ${!musicEnabled ? "opacity-50 pointer-events-none" : ""}`}>
-                  {KNOWN_MUSIC_MODELS.map((mOpt) => {
-                    const isSelected = selectedMusicModel === mOpt.value;
-                    return (
-                      <label
-                        key={mOpt.value}
-                        onClick={() => handleMusicModelChange(mOpt.value)}
-                        className={`flex items-center justify-between p-2 rounded-lg border cursor-pointer transition-all ${
-                          isSelected && musicEnabled
-                            ? "bg-[#c4ff3d]/10 border-[#c4ff3d]/40 text-white"
-                            : "bg-[#121214] border-white/[0.06] text-[#a1a1aa]"
-                        }`}
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <input
-                            type="radio"
-                            name="music_model_radio"
-                            checked={isSelected}
-                            onChange={() => handleMusicModelChange(mOpt.value)}
-                            disabled={!musicEnabled}
-                            className="w-3.5 h-3.5 text-[#c4ff3d] accent-[#c4ff3d] cursor-pointer"
-                          />
-                          <span className="text-xs font-mono">{mOpt.label}</span>
-                        </div>
-                        {isSelected && (
-                          <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-[#c4ff3d]/20 text-[#c4ff3d]">
-                            Active
-                          </span>
-                        )}
-                      </label>
-                    );
-                  })}
-                </div>
-
-                {/* Background music controls (only when musicEnabled is true) */}
-                {musicEnabled && (
-                  <div className="space-y-3 pt-2 border-t border-white/[0.06]">
-                    {/* Prompt textarea */}
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between text-[11px] text-[#a1a1aa]">
-                        <label>Music Prompt:</label>
-                        <span className="font-mono">{musicPrompt.length} chars</span>
-                      </div>
-                      <textarea
-                        rows={3}
-                        value={musicPrompt}
-                        onChange={(e) => handleMusicPromptChange(e.target.value)}
-                        placeholder="e.g. Ambient electronic background with soft synth chords and warm pads..."
-                        className="w-full bg-[#121214] border border-white/[0.1] rounded-lg p-2 text-xs text-white placeholder-[#52525b] focus:outline-none focus:border-[#c4ff3d]"
-                      />
+              {openModels && (
+                <div id="card-models-body" className="p-4 sm:p-5 pt-0 space-y-4 border-t border-white/[0.06]">
+                  {/* TTS Model Selector Checkbox List */}
+                  <div className="p-3.5 bg-[#18181b] border border-white/[0.06] rounded-xl space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-white">TTS Model</span>
+                      <span className="text-[11px] text-[#a1a1aa] font-mono">
+                        {effectiveModel}
+                      </span>
                     </div>
 
-                    {/* Generate / Cancel music button */}
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleGenerateMusic(false)}
-                        disabled={
-                          generatingMusic ||
-                          (!musicPrompt.trim() && !parsedDirectives.musicPrompt?.trim())
-                        }
-                        className="flex-1 py-2 px-3 text-xs font-semibold text-[#0a0a0b] bg-[#c4ff3d] rounded-lg hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-1.5"
-                      >
-                        {generatingMusic ? (
-                          <>
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            <span>Generating clip...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles className="w-3.5 h-3.5" />
-                            <span>{musicClips.length > 0 ? "Regenerate music" : "Generate music"}</span>
-                          </>
-                        )}
-                      </button>
-                      {generatingMusic && (
-                        <button
-                          type="button"
-                          onClick={handleCancelMusic}
-                          className="py-2 px-3 text-xs font-medium text-white bg-[#18181b] hover:bg-white/[0.08] border border-white/[0.1] rounded-lg transition-colors"
-                        >
-                          Cancel
-                        </button>
-                      )}
+                    <div className="space-y-1.5">
+                      {KNOWN_TTS_MODELS.map((opt) => {
+                        const isChecked = selectedModel === opt.value;
+                        return (
+                          <label
+                            key={opt.value}
+                            onClick={() => handleModelChange(opt.value)}
+                            className={`flex items-center justify-between p-2 rounded-lg border cursor-pointer transition-all ${
+                              isChecked
+                                ? "bg-[#c4ff3d]/10 border-[#c4ff3d]/40 text-white"
+                                : "bg-[#121214] border-white/[0.06] text-[#a1a1aa] hover:border-white/[0.15] hover:text-white"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => handleModelChange(opt.value)}
+                                className="w-3.5 h-3.5 rounded border-white/20 text-[#c4ff3d] accent-[#c4ff3d] focus:ring-0 cursor-pointer"
+                              />
+                              <span className="text-xs font-mono">{opt.label}</span>
+                            </div>
+                            {isChecked && (
+                              <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-[#c4ff3d]/20 text-[#c4ff3d]">
+                                Active
+                              </span>
+                            )}
+                          </label>
+                        );
+                      })}
                     </div>
 
-                    {musicError && (
-                      <div className="p-2 bg-red-950/40 border border-red-900/60 rounded-lg text-[11px] text-red-300 font-mono">
-                        {musicError}
+                    {selectedModel === "custom" && (
+                      <div className="space-y-1 pt-1 border-t border-white/[0.05]">
+                        <label className="text-[11px] text-[#a1a1aa]">Custom Model Name:</label>
+                        <input
+                          type="text"
+                          value={customModelInput}
+                          onChange={(e) => handleCustomModelChange(e.target.value)}
+                          placeholder={`e.g. ${DEFAULT_TTS_MODEL}`}
+                          className="w-full bg-[#121214] border border-white/[0.1] rounded-lg px-3 py-2 text-xs text-white placeholder-[#52525b] focus:outline-none focus:border-[#c4ff3d] font-mono"
+                        />
                       </div>
                     )}
 
-                    {/* Generated Clips */}
-                    {musicClips.length > 0 && (
-                      <div className="space-y-2 pt-1 border-t border-white/[0.05]">
-                        <div className="flex items-center justify-between text-xs font-semibold text-white">
-                          <span>Generated Clips ({musicClips.length})</span>
+                    <p className="text-[11px] text-[#a1a1aa] leading-relaxed pt-1 border-t border-white/[0.05]">
+                      Voices: Rami (Speaker 1), Leda (Speaker 2). Some models may not support multi-speaker mode; if synthesis fails with an unsupported-model error, choose the default model.
+                    </p>
+                  </div>
+
+                  {/* Music Model Section */}
+                  <div className="p-3.5 bg-[#18181b] border border-white/[0.06] rounded-xl space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Music className="w-3.5 h-3.5 text-[#c4ff3d]" />
+                        <span className="text-xs font-semibold text-white">Music model</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      {KNOWN_MUSIC_MODELS.map((mOpt) => {
+                        const isSelected = selectedMusicModel === mOpt.value;
+                        return (
+                          <label
+                            key={mOpt.value}
+                            onClick={() => handleMusicModelChange(mOpt.value)}
+                            className={`flex items-center justify-between p-2 rounded-lg border cursor-pointer transition-all ${
+                              isSelected
+                                ? "bg-[#c4ff3d]/10 border-[#c4ff3d]/40 text-white"
+                                : "bg-[#121214] border-white/[0.06] text-[#a1a1aa] hover:border-white/[0.15] hover:text-white"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <input
+                                type="radio"
+                                name="music_model_radio"
+                                checked={isSelected}
+                                onChange={() => handleMusicModelChange(mOpt.value)}
+                                className="w-3.5 h-3.5 text-[#c4ff3d] accent-[#c4ff3d] cursor-pointer"
+                              />
+                              <span className="text-xs font-mono">{mOpt.label}</span>
+                            </div>
+                            {isSelected && (
+                              <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-[#c4ff3d]/20 text-[#c4ff3d]">
+                                Active
+                              </span>
+                            )}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Card 2: Voices */}
+            <div className="bg-[#121214] border border-white/[0.08] rounded-[20px] shadow-xl overflow-hidden">
+              <div
+                className="w-full flex items-center justify-between p-4 sm:p-5 cursor-pointer select-none hover:bg-white/[0.02] transition-colors"
+                onClick={() => setOpenVoices(!openVoices)}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Users className="w-4 h-4 text-[#c4ff3d]" />
+                  <span className="text-sm font-semibold text-white tracking-wide">Voices</span>
+                </div>
+                <button
+                  type="button"
+                  aria-expanded={openVoices}
+                  aria-controls="card-voices-body"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpenVoices(!openVoices);
+                  }}
+                  className="p-1 rounded-lg text-[#a1a1aa] hover:text-white hover:bg-white/[0.08] transition-colors focus:outline-none"
+                  title={openVoices ? "Collapse" : "Expand"}
+                >
+                  <ChevronDown
+                    className={`w-4 h-4 transform transition-transform duration-200 ${openVoices ? "rotate-180" : ""}`}
+                  />
+                </button>
+              </div>
+
+              {openVoices && (
+                <div id="card-voices-body" className="p-4 sm:p-5 pt-0 space-y-3.5 border-t border-white/[0.06]">
+                  {/* Speaker 1 (Role: Rami) */}
+                  <div className="p-3 bg-[#18181b] border border-white/[0.06] rounded-xl flex flex-col gap-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <div className="w-6 h-6 rounded-lg bg-[#c4ff3d]/10 text-[#c4ff3d] flex items-center justify-center text-xs font-bold font-mono shrink-0">
+                          1
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <input
+                            type="text"
+                            value={speakerNames.role1}
+                            onChange={(e) => handleSpeakerNameChange("role1", e.target.value)}
+                            placeholder={DEFAULT_SPEAKER_NAMES.role1}
+                            className="w-full bg-[#121214] border border-white/[0.1] rounded px-2 py-0.5 text-xs text-white font-medium focus:outline-none focus:border-[#c4ff3d]"
+                          />
+                          <div className="text-[11px] text-[#a1a1aa] font-mono mt-0.5 truncate">
+                            Speaker 1 · Role: Rami
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <select
+                          value={voice1}
+                          onChange={(e) => handleVoice1Change(e.target.value)}
+                          className="bg-[#121214] border border-white/[0.1] rounded-lg px-2 py-1 text-xs text-[#c4ff3d] font-mono focus:outline-none focus:border-[#c4ff3d]"
+                        >
+                          {availableVoices.map((v) => (
+                            <option key={v} value={v}>
+                              {v}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => handleTestVoice(1, voice1)}
+                          disabled={previewLoading1}
+                          aria-label="Test voice"
+                          title="Test voice"
+                          className="p-1.5 bg-[#121214] hover:bg-white/[0.08] border border-white/[0.1] rounded-lg text-[#c4ff3d] transition-colors disabled:opacity-50"
+                        >
+                          {previewLoading1 ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Play className="w-3.5 h-3.5 fill-current" />
+                          )}
+                        </button>
+                        <Mic2 className="w-3.5 h-3.5 text-[#c4ff3d]" />
+                      </div>
+                    </div>
+                    {previewAudioUrl1 && (
+                      <div className="flex items-center justify-end gap-2 pt-1 border-t border-white/[0.05]">
+                        <span className="text-[10px] text-[#a1a1aa] font-mono">Sample:</span>
+                        <audio
+                          controls
+                          autoPlay
+                          src={previewAudioUrl1}
+                          className="h-6 w-44 rounded accent-[#c4ff3d]"
+                        />
+                      </div>
+                    )}
+                    {previewError1 && (
+                      <div className="text-[11px] text-red-400 font-mono pt-1 border-t border-red-900/40">
+                        {previewError1}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Speaker 2 (Role: Leda) */}
+                  <div className="p-3 bg-[#18181b] border border-white/[0.06] rounded-xl flex flex-col gap-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <div className="w-6 h-6 rounded-lg bg-[#c4ff3d]/10 text-[#c4ff3d] flex items-center justify-center text-xs font-bold font-mono shrink-0">
+                          2
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <input
+                            type="text"
+                            value={speakerNames.role2}
+                            onChange={(e) => handleSpeakerNameChange("role2", e.target.value)}
+                            placeholder={DEFAULT_SPEAKER_NAMES.role2}
+                            className="w-full bg-[#121214] border border-white/[0.1] rounded px-2 py-0.5 text-xs text-white font-medium focus:outline-none focus:border-[#c4ff3d]"
+                          />
+                          <div className="text-[11px] text-[#a1a1aa] font-mono mt-0.5 truncate">
+                            Speaker 2 · Role: Leda
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <select
+                          value={voice2}
+                          onChange={(e) => handleVoice2Change(e.target.value)}
+                          className="bg-[#121214] border border-white/[0.1] rounded-lg px-2 py-1 text-xs text-[#c4ff3d] font-mono focus:outline-none focus:border-[#c4ff3d]"
+                        >
+                          {availableVoices.map((v) => (
+                            <option key={v} value={v}>
+                              {v}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => handleTestVoice(2, voice2)}
+                          disabled={previewLoading2}
+                          aria-label="Test voice"
+                          title="Test voice"
+                          className="p-1.5 bg-[#121214] hover:bg-white/[0.08] border border-white/[0.1] rounded-lg text-[#c4ff3d] transition-colors disabled:opacity-50"
+                        >
+                          {previewLoading2 ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Play className="w-3.5 h-3.5 fill-current" />
+                          )}
+                        </button>
+                        <Mic2 className="w-3.5 h-3.5 text-[#c4ff3d]" />
+                      </div>
+                    </div>
+                    {previewAudioUrl2 && (
+                      <div className="flex items-center justify-end gap-2 pt-1 border-t border-white/[0.05]">
+                        <span className="text-[10px] text-[#a1a1aa] font-mono">Sample:</span>
+                        <audio
+                          controls
+                          autoPlay
+                          src={previewAudioUrl2}
+                          className="h-6 w-44 rounded accent-[#c4ff3d]"
+                        />
+                      </div>
+                    )}
+                    {previewError2 && (
+                      <div className="text-[11px] text-red-400 font-mono pt-1 border-t border-red-900/40">
+                        {previewError2}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Card 3: Output */}
+            <div className="bg-[#121214] border border-white/[0.08] rounded-[20px] shadow-xl overflow-hidden">
+              <div
+                className="w-full flex items-center justify-between p-4 sm:p-5 cursor-pointer select-none hover:bg-white/[0.02] transition-colors"
+                onClick={() => setOpenOutput(!openOutput)}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Sliders className="w-4 h-4 text-[#c4ff3d]" />
+                  <span className="text-sm font-semibold text-white tracking-wide">Output</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-mono uppercase px-2 py-0.5 rounded bg-white/[0.05] text-[#c4ff3d]">
+                    {audioOutput.format}
+                  </span>
+                  <button
+                    type="button"
+                    aria-expanded={openOutput}
+                    aria-controls="card-output-body"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpenOutput(!openOutput);
+                    }}
+                    className="p-1 rounded-lg text-[#a1a1aa] hover:text-white hover:bg-white/[0.08] transition-colors focus:outline-none"
+                    title={openOutput ? "Collapse" : "Expand"}
+                  >
+                    <ChevronDown
+                      className={`w-4 h-4 transform transition-transform duration-200 ${openOutput ? "rotate-180" : ""}`}
+                    />
+                  </button>
+                </div>
+              </div>
+
+              {openOutput && (
+                <div id="card-output-body" className="p-4 sm:p-5 pt-0 space-y-3.5 border-t border-white/[0.06]">
+                  {/* Format: two radio buttons, WAV and MP3 */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-white block">Format</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {(["wav", "mp3"] as const).map((fmt) => {
+                        const isSelected = audioOutput.format === fmt;
+                        return (
+                          <label
+                            key={fmt}
+                            onClick={() => handleAudioOutputChange({ format: fmt })}
+                            className={`flex items-center justify-between p-2.5 rounded-xl border cursor-pointer transition-all ${
+                              isSelected
+                                ? "bg-[#c4ff3d]/10 border-[#c4ff3d]/40 text-white"
+                                : "bg-[#18181b] border-white/[0.06] text-[#a1a1aa] hover:border-white/[0.15]"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="radio"
+                                name="audio_format"
+                                checked={isSelected}
+                                onChange={() => handleAudioOutputChange({ format: fmt })}
+                                className="w-3.5 h-3.5 text-[#c4ff3d] accent-[#c4ff3d] cursor-pointer"
+                              />
+                              <span className="text-xs font-mono uppercase font-semibold">{fmt}</span>
+                            </div>
+                            <span className="text-[10px] text-[#71717a] font-mono">
+                              {fmt === "wav" ? "Lossless" : "Compressed"}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Sample rate */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between items-center text-xs">
+                      <label className="font-semibold text-white">Sample rate</label>
+                      <span className="text-[11px] text-[#a1a1aa] font-mono">{audioOutput.sampleRate} Hz</span>
+                    </div>
+                    <select
+                      value={audioOutput.sampleRate}
+                      onChange={(e) =>
+                        handleAudioOutputChange({
+                          sampleRate: parseInt(e.target.value, 10) as 16000 | 24000 | 44100,
+                        })
+                      }
+                      className="w-full bg-[#18181b] border border-white/[0.1] rounded-lg px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-[#c4ff3d]"
+                    >
+                      <option value={16000}>16,000 Hz</option>
+                      <option value={24000}>24,000 Hz (default)</option>
+                      <option value={44100}>44,100 Hz</option>
+                    </select>
+                  </div>
+
+                  {/* Channels */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-white block">Channels</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {(["mono", "stereo"] as const).map((ch) => {
+                        const isSelected = audioOutput.channels === ch;
+                        return (
+                          <label
+                            key={ch}
+                            onClick={() => handleAudioOutputChange({ channels: ch })}
+                            className={`flex items-center justify-between p-2 rounded-lg border cursor-pointer transition-all ${
+                              isSelected
+                                ? "bg-[#c4ff3d]/10 border-[#c4ff3d]/40 text-white"
+                                : "bg-[#18181b] border-white/[0.06] text-[#a1a1aa] hover:border-white/[0.15]"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="radio"
+                                name="audio_channels"
+                                checked={isSelected}
+                                onChange={() => handleAudioOutputChange({ channels: ch })}
+                                className="w-3.5 h-3.5 text-[#c4ff3d] accent-[#c4ff3d] cursor-pointer"
+                              />
+                              <span className="text-xs font-mono capitalize">{ch}</span>
+                            </div>
+                            <span className="text-[10px] text-[#71717a] font-mono">
+                              {ch === "mono" ? "1-ch" : "2-ch"}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* MP3 bitrate */}
+                  <div className={`space-y-1.5 transition-opacity ${audioOutput.format === "wav" ? "opacity-40" : ""}`}>
+                    <div className="flex justify-between items-center text-xs">
+                      <label className="font-semibold text-white">MP3 bitrate</label>
+                      <span className="text-[11px] text-[#a1a1aa] font-mono">
+                        {audioOutput.format === "wav" ? "N/A (WAV)" : `${audioOutput.mp3Bitrate} kbps`}
+                      </span>
+                    </div>
+                    <select
+                      value={audioOutput.mp3Bitrate}
+                      disabled={audioOutput.format === "wav"}
+                      onChange={(e) =>
+                        handleAudioOutputChange({
+                          mp3Bitrate: parseInt(e.target.value, 10) as 64 | 96 | 128 | 192,
+                        })
+                      }
+                      className="w-full bg-[#18181b] border border-white/[0.1] rounded-lg px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-[#c4ff3d] disabled:cursor-not-allowed"
+                    >
+                      <option value={64}>64 kbps</option>
+                      <option value={96}>96 kbps</option>
+                      <option value={128}>128 kbps (default)</option>
+                      <option value={192}>192 kbps</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Card 4: Music */}
+            <div className="bg-[#121214] border border-white/[0.08] rounded-[20px] shadow-xl overflow-hidden">
+              <div
+                className="w-full flex items-center justify-between p-4 sm:p-5 cursor-pointer select-none hover:bg-white/[0.02] transition-colors"
+                onClick={() => setOpenMusic(!openMusic)}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Music className="w-4 h-4 text-[#c4ff3d]" />
+                  <span className="text-sm font-semibold text-white tracking-wide">Music</span>
+                </div>
+                <button
+                  type="button"
+                  aria-expanded={openMusic}
+                  aria-controls="card-music-body"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpenMusic(!openMusic);
+                  }}
+                  className="p-1 rounded-lg text-[#a1a1aa] hover:text-white hover:bg-white/[0.08] transition-colors focus:outline-none"
+                  title={openMusic ? "Collapse" : "Expand"}
+                >
+                  <ChevronDown
+                    className={`w-4 h-4 transform transition-transform duration-200 ${openMusic ? "rotate-180" : ""}`}
+                  />
+                </button>
+              </div>
+
+              {openMusic && (
+                <div id="card-music-body" className="p-4 sm:p-5 pt-0 space-y-4 border-t border-white/[0.06]">
+                  <div className="flex items-center justify-between">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={musicEnabled}
+                        onChange={(e) => handleToggleMusic(e.target.checked)}
+                        className="w-3.5 h-3.5 rounded border-white/20 text-[#c4ff3d] accent-[#c4ff3d] focus:ring-0 cursor-pointer"
+                      />
+                      <span className="text-xs text-white font-medium">Add background music</span>
+                    </label>
+                  </div>
+
+                  {musicEnabled && (
+                    <div className="space-y-3 pt-2 border-t border-white/[0.06]">
+                      {/* Prompt textarea */}
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between text-[11px] text-[#a1a1aa]">
+                          <label>Music description:</label>
+                          <span className="font-mono">{musicPrompt.length} chars</span>
+                        </div>
+                        <textarea
+                          rows={3}
+                          value={musicPrompt}
+                          onChange={(e) => handleMusicPromptChange(e.target.value)}
+                          placeholder="Instrumental only, no vocals. Warm, calm Persian-inspired background music with ney, santur and soft strings, around 75 BPM, gentle and friendly."
+                          className="w-full bg-[#121214] border border-white/[0.1] rounded-lg p-2 text-xs text-white placeholder-[#52525b] focus:outline-none focus:border-[#c4ff3d]"
+                        />
+                      </div>
+
+                      {/* Generate / Cancel music button */}
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleGenerateMusic(false)}
+                          disabled={
+                            generatingMusic ||
+                            (!musicPrompt.trim() && !parsedDirectives.musicPrompt?.trim())
+                          }
+                          className="flex-1 py-2 px-3 text-xs font-semibold text-[#0a0a0b] bg-[#c4ff3d] rounded-lg hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-1.5"
+                        >
+                          {generatingMusic ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              <span>Generating clip...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="w-3.5 h-3.5" />
+                              <span>{musicClips.length > 0 ? "Regenerate music" : "Create music"}</span>
+                            </>
+                          )}
+                        </button>
+                        {generatingMusic && (
                           <button
                             type="button"
-                            onClick={() => handleGenerateMusic(true)}
-                            disabled={generatingMusic || !musicPrompt.trim()}
-                            className="text-[11px] text-[#c4ff3d] hover:underline flex items-center gap-1"
+                            onClick={handleCancelMusic}
+                            className="py-2 px-3 text-xs font-medium text-white bg-[#18181b] hover:bg-white/[0.08] border border-white/[0.1] rounded-lg transition-colors"
                           >
-                            <Plus className="w-3 h-3" />
-                            Generate another clip
+                            Cancel
                           </button>
+                        )}
+                      </div>
+
+                      {musicError && (
+                        <div className="p-2 bg-red-950/40 border border-red-900/60 rounded-lg text-[11px] text-red-300 font-mono">
+                          {musicError}
                         </div>
-                        {musicClips.map((clip) => (
-                          <div key={clip.id} className="p-2 bg-[#121214] border border-white/[0.06] rounded-lg space-y-1.5">
-                            <div className="flex items-center justify-between text-[11px] font-mono text-[#a1a1aa]">
-                              <span className="text-white font-medium">Clip #{clip.clipNumber} (30s)</span>
-                            </div>
-                            <audio controls src={clip.audioUrl} className="w-full h-7 rounded accent-[#c4ff3d]" />
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Placements Section */}
-                    <div className="space-y-2.5 pt-1 border-t border-white/[0.05]">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold text-white">Placements</span>
-                        <button
-                          type="button"
-                          onClick={handleAddPlacement}
-                          className="px-2 py-1 text-[11px] font-medium text-[#0a0a0b] bg-[#c4ff3d] rounded hover:brightness-110 flex items-center gap-1"
-                        >
-                          <Plus className="w-3 h-3" />
-                          Add placement
-                        </button>
-                      </div>
-
-                      {musicPlacements.length === 0 && (
-                        <p className="text-[11px] text-[#71717a] italic">No placements added yet.</p>
                       )}
 
-                      {musicPlacements.map((p, idx) => (
-                        <div key={p.id} className="p-2.5 bg-[#121214] border border-white/[0.06] rounded-lg space-y-2 text-xs">
-                          <div className="flex items-center justify-between">
-                            <span className="font-semibold text-white text-[11px]">Placement #{idx + 1}</span>
+                      {/* Generated Clips */}
+                      {musicClips.length > 0 && (
+                        <div className="space-y-2 pt-1 border-t border-white/[0.05]">
+                          <div className="flex items-center justify-between text-xs font-semibold text-white">
+                            <span>Generated Clips ({musicClips.length})</span>
                             <button
                               type="button"
-                              onClick={() => handleRemovePlacement(p.id)}
-                              className="text-red-400 hover:text-red-300 p-1"
-                              title="Remove placement"
+                              onClick={() => handleGenerateMusic(true)}
+                              disabled={generatingMusic || !musicPrompt.trim()}
+                              className="text-[11px] text-[#c4ff3d] hover:underline flex items-center gap-1"
                             >
-                              <Trash2 className="w-3 h-3" />
+                              <Plus className="w-3 h-3" />
+                              Generate another clip
                             </button>
                           </div>
+                          {musicClips.map((clip) => (
+                            <div key={clip.id} className="p-2 bg-[#121214] border border-white/[0.06] rounded-lg space-y-1.5">
+                              <div className="flex items-center justify-between text-[11px] font-mono text-[#a1a1aa]">
+                                <span className="text-white font-medium">Clip #{clip.clipNumber} (30s)</span>
+                              </div>
+                              <audio controls src={clip.audioUrl} className="w-full h-7 rounded accent-[#c4ff3d]" />
+                            </div>
+                          ))}
+                        </div>
+                      )}
 
-                          <div className="grid grid-cols-2 gap-2">
-                            <div>
-                              <label className="text-[10px] text-[#a1a1aa] block">Anchor</label>
-                              <select
-                                value={p.anchor}
-                                onChange={(e) =>
-                                  handleUpdatePlacement(p.id, { anchor: e.target.value as MusicAnchor })
-                                }
-                                className="w-full bg-[#18181b] border border-white/[0.1] rounded px-1.5 py-1 text-[11px] text-white font-mono"
+                      {/* Placements Section */}
+                      <div className="space-y-2.5 pt-1 border-t border-white/[0.05]">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-white">Placements</span>
+                          <button
+                            type="button"
+                            onClick={handleAddPlacement}
+                            className="px-2 py-1 text-[11px] font-medium text-[#0a0a0b] bg-[#c4ff3d] rounded hover:brightness-110 flex items-center gap-1"
+                          >
+                            <Plus className="w-3 h-3" />
+                            Add placement
+                          </button>
+                        </div>
+
+                        {musicPlacements.length === 0 && (
+                          <p className="text-[11px] text-[#71717a] italic">No placements added yet.</p>
+                        )}
+
+                        {musicPlacements.map((p, idx) => (
+                          <div key={p.id} className="p-2.5 bg-[#121214] border border-white/[0.06] rounded-lg space-y-2 text-xs">
+                            <div className="flex items-center justify-between">
+                              <span className="font-semibold text-white text-[11px]">Placement #{idx + 1}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleRemovePlacement(p.id)}
+                                className="text-red-400 hover:text-red-300 p-1"
+                                title="Remove placement"
                               >
-                                <option value="start">Start of podcast</option>
-                                <option value="end">End of podcast</option>
-                                <option value="before_block">Before block N</option>
-                                <option value="after_block">After block N</option>
-                              </select>
+                                <Trash2 className="w-3 h-3" />
+                              </button>
                             </div>
 
-                            {(p.anchor === "before_block" || p.anchor === "after_block") ? (
+                            <div className="grid grid-cols-2 gap-2">
                               <div>
-                                <label className="text-[10px] text-[#a1a1aa] block">Block N (1-{Math.max(1, totalBlocks)})</label>
-                                <input
-                                  type="number"
-                                  min="1"
-                                  max={Math.max(1, totalBlocks)}
-                                  value={p.anchorBlock}
+                                <label className="text-[10px] text-[#a1a1aa] block">Anchor</label>
+                                <select
+                                  value={p.anchor}
                                   onChange={(e) =>
-                                    handleUpdatePlacement(p.id, {
-                                      anchorBlock: Math.max(1, parseInt(e.target.value, 10) || 1),
-                                    })
+                                    handleUpdatePlacement(p.id, { anchor: e.target.value as MusicAnchor })
                                   }
                                   className="w-full bg-[#18181b] border border-white/[0.1] rounded px-1.5 py-1 text-[11px] text-white font-mono"
-                                />
+                                >
+                                  <option value="start">Start of podcast</option>
+                                  <option value="end">End of podcast</option>
+                                  <option value="before_block">Before block N</option>
+                                  <option value="after_block">After block N</option>
+                                </select>
                               </div>
-                            ) : (
+
+                              {(p.anchor === "before_block" || p.anchor === "after_block") ? (
+                                <div>
+                                  <label className="text-[10px] text-[#a1a1aa] block">Block N (1-{Math.max(1, totalBlocks)})</label>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    max={Math.max(1, totalBlocks)}
+                                    value={p.anchorBlock}
+                                    onChange={(e) =>
+                                      handleUpdatePlacement(p.id, {
+                                        anchorBlock: Math.max(1, parseInt(e.target.value, 10) || 1),
+                                      })
+                                    }
+                                    className="w-full bg-[#18181b] border border-white/[0.1] rounded px-1.5 py-1 text-[11px] text-white font-mono"
+                                  />
+                                </div>
+                              ) : (
+                                <div>
+                                  <label className="text-[10px] text-[#a1a1aa] block">Until block M (optional)</label>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    max={Math.max(1, totalBlocks)}
+                                    value={p.untilBlock || ""}
+                                    placeholder="None"
+                                    onChange={(e) => {
+                                      const val = e.target.value.trim() ? parseInt(e.target.value, 10) : undefined;
+                                      handleUpdatePlacement(p.id, { untilBlock: val });
+                                    }}
+                                    className="w-full bg-[#18181b] border border-white/[0.1] rounded px-1.5 py-1 text-[11px] text-white font-mono"
+                                  />
+                                </div>
+                              )}
+                            </div>
+
+                            {(p.anchor === "before_block" || p.anchor === "after_block") && (
                               <div>
                                 <label className="text-[10px] text-[#a1a1aa] block">Until block M (optional)</label>
                                 <input
                                   type="number"
-                                  min="1"
+                                  min={p.anchorBlock}
                                   max={Math.max(1, totalBlocks)}
                                   value={p.untilBlock || ""}
                                   placeholder="None"
@@ -1784,951 +2203,785 @@ export default function App() {
                                 />
                               </div>
                             )}
-                          </div>
 
-                          {(p.anchor === "before_block" || p.anchor === "after_block") && (
-                            <div>
-                              <label className="text-[10px] text-[#a1a1aa] block">Until block M (optional)</label>
-                              <input
-                                type="number"
-                                min={p.anchorBlock}
-                                max={Math.max(1, totalBlocks)}
-                                value={p.untilBlock || ""}
-                                placeholder="None"
-                                onChange={(e) => {
-                                  const val = e.target.value.trim() ? parseInt(e.target.value, 10) : undefined;
-                                  handleUpdatePlacement(p.id, { untilBlock: val });
-                                }}
-                                className="w-full bg-[#18181b] border border-white/[0.1] rounded px-1.5 py-1 text-[11px] text-white font-mono"
-                              />
+                            {/* Resolved span display */}
+                            <div className="text-[11px] font-mono text-[#c4ff3d] bg-[#18181b] px-2 py-1 rounded">
+                              {(() => {
+                                const aType = p.anchor === "before_block" ? "before" : p.anchor === "after_block" ? "after" : p.anchor;
+                                const span = resolvePlacementSpan({
+                                  lineNum: 0,
+                                  anchorType: aType as any,
+                                  anchorBlock: p.anchorBlock,
+                                  untilBlock: p.untilBlock,
+                                  clipFrom: p.clipFrom,
+                                  clipTo: p.clipTo,
+                                  volumeDb: p.volumeDb,
+                                  fadeIn: p.fadeIn,
+                                  fadeOut: p.fadeOut,
+                                  duckSpeech: p.duckSpeech,
+                                  rawLine: "",
+                                }, totalBlocks);
+                                return span.description;
+                              })()}
                             </div>
-                          )}
 
-                          {/* Resolved span display */}
-                          <div className="text-[11px] font-mono text-[#c4ff3d] bg-[#18181b] px-2 py-1 rounded">
-                            {(() => {
-                              const aType = p.anchor === "before_block" ? "before" : p.anchor === "after_block" ? "after" : p.anchor;
-                              const span = resolvePlacementSpan({
-                                lineNum: 0,
-                                anchorType: aType as any,
-                                anchorBlock: p.anchorBlock,
-                                untilBlock: p.untilBlock,
-                                clipFrom: p.clipFrom,
-                                clipTo: p.clipTo,
-                                volumeDb: p.volumeDb,
-                                fadeIn: p.fadeIn,
-                                fadeOut: p.fadeOut,
-                                duckSpeech: p.duckSpeech,
-                                rawLine: "",
-                              }, totalBlocks);
-                              return span.description;
-                            })()}
-                          </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="text-[10px] text-[#a1a1aa] block">Clip from (sec)</label>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="30"
+                                  value={p.clipFrom}
+                                  onChange={(e) =>
+                                    handleUpdatePlacement(p.id, { clipFrom: Math.max(0, parseFloat(e.target.value) || 0) })
+                                  }
+                                  className="w-full bg-[#18181b] border border-white/[0.1] rounded px-1.5 py-1 text-[11px] text-white font-mono"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-[10px] text-[#a1a1aa] block">Clip to (sec)</label>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="30"
+                                  value={p.clipTo}
+                                  onChange={(e) =>
+                                    handleUpdatePlacement(p.id, { clipTo: Math.max(0, parseFloat(e.target.value) || 0) })
+                                  }
+                                  className="w-full bg-[#18181b] border border-white/[0.1] rounded px-1.5 py-1 text-[11px] text-white font-mono"
+                                />
+                              </div>
+                            </div>
 
-                          <div className="grid grid-cols-2 gap-2">
-                            <div>
-                              <label className="text-[10px] text-[#a1a1aa] block">Clip from (sec)</label>
+                            <div className="space-y-1">
+                              <div className="flex justify-between text-[10px] text-[#a1a1aa]">
+                                <span>Volume</span>
+                                <span className="font-mono text-white">{p.volumeDb} dB</span>
+                              </div>
                               <input
-                                type="number"
-                                min="0"
-                                max="30"
-                                value={p.clipFrom}
+                                type="range"
+                                min="-30"
+                                max="0"
+                                value={p.volumeDb}
                                 onChange={(e) =>
-                                  handleUpdatePlacement(p.id, { clipFrom: Math.max(0, parseFloat(e.target.value) || 0) })
+                                  handleUpdatePlacement(p.id, { volumeDb: parseInt(e.target.value, 10) })
                                 }
-                                className="w-full bg-[#18181b] border border-white/[0.1] rounded px-1.5 py-1 text-[11px] text-white font-mono"
+                                className="w-full accent-[#c4ff3d]"
                               />
                             </div>
-                            <div>
-                              <label className="text-[10px] text-[#a1a1aa] block">Clip to (sec)</label>
+
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="text-[10px] text-[#a1a1aa] block">Fade in (sec)</label>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.5"
+                                  value={p.fadeIn}
+                                  onChange={(e) =>
+                                    handleUpdatePlacement(p.id, { fadeIn: Math.max(0, parseFloat(e.target.value) || 0) })
+                                  }
+                                  className="w-full bg-[#18181b] border border-white/[0.1] rounded px-1.5 py-1 text-[11px] text-white font-mono"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-[10px] text-[#a1a1aa] block">Fade out (sec)</label>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.5"
+                                  value={p.fadeOut}
+                                  onChange={(e) =>
+                                    handleUpdatePlacement(p.id, { fadeOut: Math.max(0, parseFloat(e.target.value) || 0) })
+                                  }
+                                  className="w-full bg-[#18181b] border border-white/[0.1] rounded px-1.5 py-1 text-[11px] text-white font-mono"
+                                />
+                              </div>
+                            </div>
+
+                            <label className="flex items-center gap-2 cursor-pointer pt-0.5">
                               <input
-                                type="number"
-                                min="0"
-                                max="30"
-                                value={p.clipTo}
+                                type="checkbox"
+                                checked={p.duckSpeech}
                                 onChange={(e) =>
-                                  handleUpdatePlacement(p.id, { clipTo: Math.max(0, parseFloat(e.target.value) || 0) })
+                                  handleUpdatePlacement(p.id, { duckSpeech: e.target.checked })
                                 }
-                                className="w-full bg-[#18181b] border border-white/[0.1] rounded px-1.5 py-1 text-[11px] text-white font-mono"
+                                className="w-3 h-3 text-[#c4ff3d] accent-[#c4ff3d]"
                               />
-                            </div>
+                              <span className="text-[11px] text-[#a1a1aa]">Duck speech (-6 dB during speech)</span>
+                            </label>
                           </div>
-
-                          <div className="space-y-1">
-                            <div className="flex justify-between text-[10px] text-[#a1a1aa]">
-                              <span>Volume</span>
-                              <span className="font-mono text-white">{p.volumeDb} dB</span>
-                            </div>
-                            <input
-                              type="range"
-                              min="-30"
-                              max="0"
-                              value={p.volumeDb}
-                              onChange={(e) =>
-                                handleUpdatePlacement(p.id, { volumeDb: parseInt(e.target.value, 10) })
-                              }
-                              className="w-full accent-[#c4ff3d]"
-                            />
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-2">
-                            <div>
-                              <label className="text-[10px] text-[#a1a1aa] block">Fade in (sec)</label>
-                              <input
-                                type="number"
-                                min="0"
-                                step="0.5"
-                                value={p.fadeIn}
-                                onChange={(e) =>
-                                  handleUpdatePlacement(p.id, { fadeIn: Math.max(0, parseFloat(e.target.value) || 0) })
-                                }
-                                className="w-full bg-[#18181b] border border-white/[0.1] rounded px-1.5 py-1 text-[11px] text-white font-mono"
-                              />
-                            </div>
-                            <div>
-                              <label className="text-[10px] text-[#a1a1aa] block">Fade out (sec)</label>
-                              <input
-                                type="number"
-                                min="0"
-                                step="0.5"
-                                value={p.fadeOut}
-                                onChange={(e) =>
-                                  handleUpdatePlacement(p.id, { fadeOut: Math.max(0, parseFloat(e.target.value) || 0) })
-                                }
-                                className="w-full bg-[#18181b] border border-white/[0.1] rounded px-1.5 py-1 text-[11px] text-white font-mono"
-                              />
-                            </div>
-                          </div>
-
-                          <label className="flex items-center gap-2 cursor-pointer pt-0.5">
-                            <input
-                              type="checkbox"
-                              checked={p.duckSpeech}
-                              onChange={(e) =>
-                                handleUpdatePlacement(p.id, { duckSpeech: e.target.checked })
-                              }
-                              className="w-3 h-3 text-[#c4ff3d] accent-[#c4ff3d]"
-                            />
-                            <span className="text-[11px] text-[#a1a1aa]">Duck speech (-6 dB during speech)</span>
-                          </label>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Speaker Pair Info with Voice Selectors & Preview */}
-              <div className="space-y-2.5">
-                {/* Speaker 1 (Role: Rami) */}
-                <div className="p-3 bg-[#18181b] border border-white/[0.06] rounded-xl flex flex-col gap-2.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                      <div className="w-6 h-6 rounded-lg bg-[#c4ff3d]/10 text-[#c4ff3d] flex items-center justify-center text-xs font-bold font-mono shrink-0">
-                        1
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <input
-                          type="text"
-                          value={speakerNames.role1}
-                          onChange={(e) => handleSpeakerNameChange("role1", e.target.value)}
-                          placeholder={DEFAULT_SPEAKER_NAMES.role1}
-                          className="w-full bg-[#121214] border border-white/[0.1] rounded px-2 py-0.5 text-xs text-white font-medium focus:outline-none focus:border-[#c4ff3d]"
-                        />
-                        <div className="text-[11px] text-[#a1a1aa] font-mono mt-0.5 truncate">
-                          Speaker 1 · Role: Rami
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <select
-                        value={voice1}
-                        onChange={(e) => handleVoice1Change(e.target.value)}
-                        className="bg-[#121214] border border-white/[0.1] rounded-lg px-2 py-1 text-xs text-[#c4ff3d] font-mono focus:outline-none focus:border-[#c4ff3d]"
-                      >
-                        {availableVoices.map((v) => (
-                          <option key={v} value={v}>
-                            {v}
-                          </option>
                         ))}
-                      </select>
-                      <button
-                        type="button"
-                        onClick={() => handleTestVoice(1, voice1)}
-                        disabled={previewLoading1}
-                        aria-label="Test voice"
-                        title="Test voice"
-                        className="p-1.5 bg-[#121214] hover:bg-white/[0.08] border border-white/[0.1] rounded-lg text-[#c4ff3d] transition-colors disabled:opacity-50"
-                      >
-                        {previewLoading1 ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <Play className="w-3.5 h-3.5 fill-current" />
-                        )}
-                      </button>
-                      <Mic2 className="w-3.5 h-3.5 text-[#c4ff3d]" />
-                    </div>
-                  </div>
-                  {previewAudioUrl1 && (
-                    <div className="flex items-center justify-end gap-2 pt-1 border-t border-white/[0.05]">
-                      <span className="text-[10px] text-[#a1a1aa] font-mono">Sample:</span>
-                      <audio
-                        controls
-                        autoPlay
-                        src={previewAudioUrl1}
-                        className="h-6 w-44 rounded accent-[#c4ff3d]"
-                      />
+                      </div>
                     </div>
                   )}
-                  {previewError1 && (
-                    <div className="text-[11px] text-red-400 font-mono pt-1 border-t border-red-900/40">
-                      {previewError1}
-                    </div>
-                  )}
-                </div>
-
-                {/* Speaker 2 (Role: Leda) */}
-                <div className="p-3 bg-[#18181b] border border-white/[0.06] rounded-xl flex flex-col gap-2.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                      <div className="w-6 h-6 rounded-lg bg-[#c4ff3d]/10 text-[#c4ff3d] flex items-center justify-center text-xs font-bold font-mono shrink-0">
-                        2
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <input
-                          type="text"
-                          value={speakerNames.role2}
-                          onChange={(e) => handleSpeakerNameChange("role2", e.target.value)}
-                          placeholder={DEFAULT_SPEAKER_NAMES.role2}
-                          className="w-full bg-[#121214] border border-white/[0.1] rounded px-2 py-0.5 text-xs text-white font-medium focus:outline-none focus:border-[#c4ff3d]"
-                        />
-                        <div className="text-[11px] text-[#a1a1aa] font-mono mt-0.5 truncate">
-                          Speaker 2 · Role: Leda
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <select
-                        value={voice2}
-                        onChange={(e) => handleVoice2Change(e.target.value)}
-                        className="bg-[#121214] border border-white/[0.1] rounded-lg px-2 py-1 text-xs text-[#c4ff3d] font-mono focus:outline-none focus:border-[#c4ff3d]"
-                      >
-                        {availableVoices.map((v) => (
-                          <option key={v} value={v}>
-                            {v}
-                          </option>
-                        ))}
-                      </select>
-                      <button
-                        type="button"
-                        onClick={() => handleTestVoice(2, voice2)}
-                        disabled={previewLoading2}
-                        aria-label="Test voice"
-                        title="Test voice"
-                        className="p-1.5 bg-[#121214] hover:bg-white/[0.08] border border-white/[0.1] rounded-lg text-[#c4ff3d] transition-colors disabled:opacity-50"
-                      >
-                        {previewLoading2 ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <Play className="w-3.5 h-3.5 fill-current" />
-                        )}
-                      </button>
-                      <Mic2 className="w-3.5 h-3.5 text-[#c4ff3d]" />
-                    </div>
-                  </div>
-                  {previewAudioUrl2 && (
-                    <div className="flex items-center justify-end gap-2 pt-1 border-t border-white/[0.05]">
-                      <span className="text-[10px] text-[#a1a1aa] font-mono">Sample:</span>
-                      <audio
-                        controls
-                        autoPlay
-                        src={previewAudioUrl2}
-                        className="h-6 w-44 rounded accent-[#c4ff3d]"
-                      />
-                    </div>
-                  )}
-                  {previewError2 && (
-                    <div className="text-[11px] text-red-400 font-mono pt-1 border-t border-red-900/40">
-                      {previewError2}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Technical Specifications details */}
-              <div className="p-3 bg-[#18181b] border border-white/[0.06] rounded-xl text-xs font-mono space-y-1.5 text-[#a1a1aa]">
-                <div className="flex justify-between">
-                  <span>Audio Format</span>
-                  <span className="text-[#f5f5f7]">24 kHz Mono PCM</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Batch Chunking</span>
-                  <span className="text-[#f5f5f7]">20 blocks / chunk</span>
-                </div>
-              </div>
-
-              {/* Usage & Quota Panel with Progress Bars */}
-              {(() => {
-                const reqPercent = Math.min(
-                  100,
-                  Math.round((todayUsage.requests / usageLimits.dailyRequests) * 100)
-                );
-                const wordPercent = Math.min(
-                  100,
-                  Math.round((todayUsage.words / usageLimits.dailyWords) * 100)
-                );
-
-                const formatNum = (num: number | string) =>
-                  selectedLang === "fa" ? toPersianDigits(num) : String(num);
-
-                const getBarColor = (pct: number) => {
-                  if (pct >= 90) return "bg-red-500";
-                  if (pct >= 70) return "bg-amber-400";
-                  return "bg-[#c4ff3d]";
-                };
-
-                const getStatusText = (pct: number) => {
-                  if (pct >= 90)
-                    return { label: "Limit almost reached", color: "text-red-400" };
-                  if (pct >= 70)
-                    return { label: "Near limit", color: "text-amber-400" };
-                  return { label: "OK", color: "text-[#c4ff3d]" };
-                };
-
-                const remRequests = Math.max(0, usageLimits.dailyRequests - todayUsage.requests);
-                const remWords = Math.max(0, usageLimits.dailyWords - todayUsage.words);
-
-                return (
-                  <div className="p-3.5 bg-[#18181b] border border-white/[0.06] rounded-xl space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Gauge className="w-3.5 h-3.5 text-[#c4ff3d]" />
-                        <span className="text-xs font-semibold text-white">Usage &amp; Quota (Today)</span>
-                      </div>
-                      <span className="text-[11px] text-[#a1a1aa] font-mono">
-                        {getTodayKey().replace("usage_", "")}
-                      </span>
-                    </div>
-
-                    {/* Requests Progress Bar */}
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between text-xs font-mono">
-                        <span className="text-[#a1a1aa]">Requests today</span>
-                        <span className="text-white font-medium">
-                          {formatNum(todayUsage.requests)} / {formatNum(usageLimits.dailyRequests)} ({formatNum(reqPercent)}%)
-                        </span>
-                      </div>
-                      <div className="w-full bg-[#121214] border border-white/[0.08] rounded-full h-[6px] overflow-hidden">
-                        <div
-                          className={`h-[6px] rounded-full transition-all duration-300 ${getBarColor(reqPercent)}`}
-                          style={{ width: `${reqPercent}%` }}
-                        />
-                      </div>
-                      <div className="flex items-center justify-between text-[11px] font-mono">
-                        <span className={getStatusText(reqPercent).color}>
-                          {getStatusText(reqPercent).label}
-                        </span>
-                        <span className="text-[#71717a]">
-                          Remaining: {formatNum(remRequests)}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Words Progress Bar */}
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between text-xs font-mono">
-                        <span className="text-[#a1a1aa]">Words today</span>
-                        <span className="text-white font-medium">
-                          {formatNum(todayUsage.words)} / {formatNum(usageLimits.dailyWords)} ({formatNum(wordPercent)}%)
-                        </span>
-                      </div>
-                      <div className="w-full bg-[#121214] border border-white/[0.08] rounded-full h-[6px] overflow-hidden">
-                        <div
-                          className={`h-[6px] rounded-full transition-all duration-300 ${getBarColor(wordPercent)}`}
-                          style={{ width: `${wordPercent}%` }}
-                        />
-                      </div>
-                      <div className="flex items-center justify-between text-[11px] font-mono">
-                        <span className={getStatusText(wordPercent).color}>
-                          {getStatusText(wordPercent).label}
-                        </span>
-                        <span className="text-[#71717a]">
-                          Remaining: {formatNum(remWords)}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Remaining amount summary */}
-                    <div className="p-2 bg-[#121214] border border-white/[0.05] rounded-lg text-[11px] font-mono space-y-1 text-[#a1a1aa]">
-                      <div className="text-white">
-                        Remaining today: {formatNum(remRequests)} requests, {formatNum(remWords)} words.
-                      </div>
-                      <div className="text-[#71717a] flex items-center justify-between">
-                        <span>Session: {formatNum(sessionRequests)} requests</span>
-                        <span>Audio today: {formatNum(Math.round(todayUsage.audioSeconds))}s</span>
-                      </div>
-                    </div>
-
-                    {/* Editable Daily Limits */}
-                    <div className="p-2.5 bg-[#121214] border border-white/[0.06] rounded-lg space-y-2">
-                      <div className="text-[11px] font-semibold text-white">Daily Limits</div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="text-[11px] text-[#a1a1aa] block mb-1">Daily request limit</label>
-                          <input
-                            type="number"
-                            min="1"
-                            value={usageLimits.dailyRequests}
-                            onChange={(e) => {
-                              const rawVal = e.target.value.trim();
-                              const val = parseInt(rawVal, 10);
-                              const updated = {
-                                ...usageLimits,
-                                dailyRequests: isNaN(val) || val <= 0 ? 1500 : val,
-                              };
-                              setUsageLimits(updated);
-                              saveUsageLimits(updated);
-                            }}
-                            className="w-full bg-[#18181b] border border-white/[0.1] rounded px-2 py-1 text-xs text-white font-mono focus:outline-none focus:border-[#c4ff3d]"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[11px] text-[#a1a1aa] block mb-1">Daily word limit</label>
-                          <input
-                            type="number"
-                            min="1"
-                            value={usageLimits.dailyWords}
-                            onChange={(e) => {
-                              const rawVal = e.target.value.trim();
-                              const val = parseInt(rawVal, 10);
-                              const updated = {
-                                ...usageLimits,
-                                dailyWords: isNaN(val) || val <= 0 ? 100000 : val,
-                              };
-                              setUsageLimits(updated);
-                              saveUsageLimits(updated);
-                            }}
-                            className="w-full bg-[#18181b] border border-white/[0.1] rounded px-2 py-1 text-xs text-white font-mono focus:outline-none focus:border-[#c4ff3d]"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Official Quota Link & Note */}
-                    <div className="pt-2 border-t border-white/[0.06] space-y-2 text-[11px] text-[#a1a1aa] leading-relaxed">
-                      <p>
-                        These numbers are counted by this app only. The official quota may be lower.
-                      </p>
-
-                      <div className="flex items-center justify-between gap-2 pt-0.5">
-                        <a
-                          href="https://ai.dev/rate-limit"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-[#0a0a0b] bg-[#c4ff3d] rounded-lg hover:brightness-110 transition-all font-sans"
-                        >
-                          <span>Check official quota</span>
-                          <ExternalLink className="w-3 h-3" />
-                        </a>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* Generate Podcast Button */}
-              <button
-                type="button"
-                onClick={handleSynthesize}
-                disabled={synthesizing || validationErrors.length > 0 || totalBlocks === 0}
-                className="w-full py-3.5 px-4 text-xs sm:text-sm font-semibold text-[#0a0a0b] bg-[#c4ff3d] rounded-xl hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(196,255,61,0.25)]"
-              >
-                {synthesizing ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>
-                      Synthesizing ({progress?.chunksDone || 0}/{progress?.chunksTotal || chunksCount})...
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4 fill-current" />
-                    <span>Generate Podcast</span>
-                  </>
-                )}
-              </button>
-
-              {/* Live Synthesis Progress */}
-              {synthesizing && progress && (
-                <div className="space-y-2.5 pt-1">
-                  <div className="flex items-center justify-between text-xs font-mono">
-                    <span className="text-[#c4ff3d] flex items-center gap-1.5 truncate max-w-[200px]">
-                      <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
-                      {progress.message}
-                    </span>
-                    <span className="text-[#a1a1aa] shrink-0">
-                      Chunk {progress.chunksDone} / {progress.chunksTotal}
-                    </span>
-                  </div>
-                  <div className="w-full bg-[#18181b] rounded-full h-2 overflow-hidden border border-white/[0.05]">
-                    <div
-                      className="bg-[#c4ff3d] h-2 transition-all duration-300 shadow-[0_0_10px_rgba(196,255,61,0.5)]"
-                      style={{
-                        width: `${
-                          progress.chunksTotal > 0
-                            ? Math.round((progress.chunksDone / progress.chunksTotal) * 100)
-                            : 0
-                        }%`,
-                      }}
-                    />
-                  </div>
                 </div>
               )}
+            </div>
 
-              {/* Synthesis Error Display */}
-              {synthError && (
-                <div className="p-3 bg-red-950/40 border border-red-800/80 rounded-xl text-xs text-red-200 flex items-start justify-between gap-2 font-mono">
-                  <div>
-                    <span className="font-semibold text-red-300">Synthesis Error: </span>
-                    {synthError}
-                  </div>
+            {/* Card 5: Create podcast */}
+            <div className="bg-[#121214] border border-white/[0.08] rounded-[20px] shadow-xl overflow-hidden">
+              <div
+                className="w-full flex items-center justify-between p-4 sm:p-5 cursor-pointer select-none hover:bg-white/[0.02] transition-colors"
+                onClick={() => setOpenCreatePodcast(!openCreatePodcast)}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Sparkles className="w-4 h-4 text-[#c4ff3d]" />
+                  <span className="text-sm font-semibold text-white tracking-wide">Create podcast</span>
+                </div>
+                <button
+                  type="button"
+                  aria-expanded={openCreatePodcast}
+                  aria-controls="card-create-podcast-body"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpenCreatePodcast(!openCreatePodcast);
+                  }}
+                  className="p-1 rounded-lg text-[#a1a1aa] hover:text-white hover:bg-white/[0.08] transition-colors focus:outline-none"
+                  title={openCreatePodcast ? "Collapse" : "Expand"}
+                >
+                  <ChevronDown
+                    className={`w-4 h-4 transform transition-transform duration-200 ${openCreatePodcast ? "rotate-180" : ""}`}
+                  />
+                </button>
+              </div>
+
+              {openCreatePodcast && (
+                <div id="card-create-podcast-body" className="p-4 sm:p-5 pt-0 space-y-4 border-t border-white/[0.06]">
+                  {/* Generate Podcast Button */}
                   <button
                     type="button"
-                    onClick={() => setSynthError(null)}
-                    className="text-red-400 hover:text-white underline text-[11px] shrink-0"
+                    onClick={handleSynthesize}
+                    disabled={synthesizing || validationErrors.length > 0 || totalBlocks === 0}
+                    className="w-full py-3.5 px-4 text-xs sm:text-sm font-semibold text-[#0a0a0b] bg-[#c4ff3d] rounded-xl hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(196,255,61,0.25)]"
                   >
-                    Dismiss
+                    {synthesizing ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>
+                          Synthesizing ({progress?.chunksDone || 0}/{progress?.chunksTotal || chunksCount})...
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4 fill-current" />
+                        <span>Generate Podcast</span>
+                      </>
+                    )}
                   </button>
+
+                  {/* Live Synthesis Progress */}
+                  {synthesizing && progress && (
+                    <div className="space-y-2.5 pt-1">
+                      <div className="flex items-center justify-between text-xs font-mono">
+                        <span className="text-[#c4ff3d] flex items-center gap-1.5 truncate max-w-[200px]">
+                          <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                          {progress.message}
+                        </span>
+                        <span className="text-[#a1a1aa] shrink-0">
+                          Chunk {progress.chunksDone} / {progress.chunksTotal}
+                        </span>
+                      </div>
+                      <div className="w-full bg-[#18181b] rounded-full h-2 overflow-hidden border border-white/[0.05]">
+                        <div
+                          className="bg-[#c4ff3d] h-2 transition-all duration-300 shadow-[0_0_10px_rgba(196,255,61,0.5)]"
+                          style={{
+                            width: `${
+                              progress.chunksTotal > 0
+                                ? Math.round((progress.chunksDone / progress.chunksTotal) * 100)
+                                : 0
+                            }%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Synthesis Error Display */}
+                  {synthError && (
+                    <div className="p-3 bg-red-950/40 border border-red-800/80 rounded-xl text-xs text-red-200 flex items-start justify-between gap-2 font-mono">
+                      <div>
+                        <span className="font-semibold text-red-300">Synthesis Error: </span>
+                        {synthError}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSynthError(null)}
+                        className="text-red-400 hover:text-white underline text-[11px] shrink-0"
+                      >
+                        Dismiss
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Audio Player / Result Display */}
+                  {synthResult ? (
+                    <div className="space-y-4 pt-1 border-t border-white/[0.06]">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Volume2 className="w-4 h-4 text-[#c4ff3d]" />
+                          <span className="text-xs font-semibold text-white">Audio Player</span>
+                        </div>
+                        <span className="text-xs px-2.5 py-0.5 bg-[#c4ff3d]/15 text-[#c4ff3d] border border-[#c4ff3d]/30 rounded-full font-mono font-medium">
+                          {synthResult.durationSeconds.toFixed(1)}s
+                        </span>
+                      </div>
+
+                      {/* Styled Waveform Visualization */}
+                      <div className="p-3 bg-[#18181b] border border-white/[0.08] rounded-xl flex flex-col gap-3">
+                        <div className="flex items-center justify-between gap-1 h-12 px-1 overflow-hidden">
+                          {[
+                            30, 60, 45, 80, 100, 70, 50, 85, 95, 60, 40, 75, 90, 55, 35, 70,
+                            85, 100, 65, 45, 80, 95, 70, 50, 30, 60, 85, 75, 40, 65, 90, 55,
+                          ].map((height, i) => (
+                            <span
+                              key={i}
+                              className="flex-1 bg-[#c4ff3d]/70 rounded-full transition-all hover:bg-[#c4ff3d]"
+                              style={{ height: `${height}%` }}
+                            />
+                          ))}
+                        </div>
+
+                        {/* Native HTML5 Audio Element */}
+                        <audio
+                          controls
+                          src={synthResult.url}
+                          className="w-full h-9 accent-[#c4ff3d] rounded-lg"
+                        />
+                      </div>
+
+                      {/* Audio Metadata */}
+                      <div className="text-xs font-mono space-y-1.5 text-[#a1a1aa]">
+                        <div className="truncate text-white font-medium">
+                          {synthResult.fileName}
+                        </div>
+                        <div>Model: {effectiveModel}</div>
+                        <div className="flex flex-wrap gap-x-2 gap-y-1 text-white/90">
+                          <span>Format: <strong className="text-[#c4ff3d] font-semibold uppercase">{synthResult.format || audioOutput.format}</strong></span>
+                          <span>·</span>
+                          <span>Rate: <strong className="text-white font-medium">{synthResult.sampleRate || audioOutput.sampleRate} Hz</strong></span>
+                          <span>·</span>
+                          <span>Channels: <strong className="text-white font-medium capitalize">{synthResult.channels || audioOutput.channels}</strong></span>
+                          {(synthResult.format || audioOutput.format) === "mp3" && (
+                            <>
+                              <span>·</span>
+                              <span>Bitrate: <strong className="text-[#c4ff3d] font-medium">{synthResult.mp3Bitrate || audioOutput.mp3Bitrate} kbps</strong></span>
+                            </>
+                          )}
+                        </div>
+                        <div>Duration: <strong className="text-white font-medium">{synthResult.durationSeconds.toFixed(1)}s</strong></div>
+                        <div className="text-[11px] text-[#52525b]">
+                          Completed {synthResult.chunkLogs.length} chunk(s)
+                        </div>
+                      </div>
+
+                      {/* Download Button */}
+                      <a
+                        href={synthResult.url}
+                        download={synthResult.fileName}
+                        className="w-full py-2.5 px-4 text-xs font-semibold text-[#0a0a0b] bg-[#c4ff3d] rounded-xl hover:brightness-110 transition-all flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(196,255,61,0.25)]"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        Download {(synthResult.format || audioOutput.format).toUpperCase()}
+                      </a>
+                    </div>
+                  ) : (
+                    <div className="p-4 bg-[#18181b] border border-white/[0.06] rounded-xl space-y-3 text-center">
+                      <div className="flex items-center justify-between gap-1 h-10 px-2 opacity-30">
+                        {[
+                          25, 40, 60, 35, 50, 70, 45, 60, 80, 55, 40, 65, 50, 35, 60, 45,
+                          70, 55, 40, 60, 50, 35, 55, 40, 30, 45, 60, 50, 35, 40, 55, 30,
+                        ].map((height, i) => (
+                          <span
+                            key={i}
+                            className="flex-1 bg-white rounded-full"
+                            style={{ height: `${height}%` }}
+                          />
+                        ))}
+                      </div>
+                      <p className="text-xs text-[#a1a1aa] leading-relaxed">
+                        Click <strong className="text-white">Generate Podcast</strong> to synthesize audio and display the waveform player.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
 
-            {/* Card 2: Output Settings Card */}
-            <div className="bg-[#121214] border border-white/[0.08] rounded-[20px] p-5 sm:p-6 space-y-4 shadow-xl">
-              <div className="flex items-center justify-between pb-2 border-b border-white/[0.07]">
-                <div className="flex items-center gap-2">
+            {/* Card 6: Advanced (closed by default) */}
+            <div className="bg-[#121214] border border-white/[0.08] rounded-[20px] shadow-xl overflow-hidden">
+              <div
+                className="w-full flex items-center justify-between p-4 sm:p-5 cursor-pointer select-none hover:bg-white/[0.02] transition-colors"
+                onClick={() => setOpenAdvanced(!openAdvanced)}
+              >
+                <div className="flex items-center gap-2.5">
                   <Sliders className="w-4 h-4 text-[#c4ff3d]" />
-                  <span className="text-sm font-semibold text-white">Output</span>
+                  <span className="text-sm font-semibold text-white tracking-wide">Advanced</span>
                 </div>
-                <span className="text-xs font-mono uppercase px-2 py-0.5 rounded bg-white/[0.05] text-[#c4ff3d]">
-                  {audioOutput.format}
-                </span>
+                <button
+                  type="button"
+                  aria-expanded={openAdvanced}
+                  aria-controls="card-advanced-body"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpenAdvanced(!openAdvanced);
+                  }}
+                  className="p-1 rounded-lg text-[#a1a1aa] hover:text-white hover:bg-white/[0.08] transition-colors focus:outline-none"
+                  title={openAdvanced ? "Collapse" : "Expand"}
+                >
+                  <ChevronDown
+                    className={`w-4 h-4 transform transition-transform duration-200 ${openAdvanced ? "rotate-180" : ""}`}
+                  />
+                </button>
               </div>
 
-              <div className="space-y-3.5">
-                {/* Format: two radio buttons, WAV and MP3 */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-white block">Format</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {(["wav", "mp3"] as const).map((fmt) => {
-                      const isSelected = audioOutput.format === fmt;
-                      return (
-                        <label
-                          key={fmt}
-                          onClick={() => handleAudioOutputChange({ format: fmt })}
-                          className={`flex items-center justify-between p-2.5 rounded-xl border cursor-pointer transition-all ${
-                            isSelected
-                              ? "bg-[#c4ff3d]/10 border-[#c4ff3d]/40 text-white"
-                              : "bg-[#18181b] border-white/[0.06] text-[#a1a1aa] hover:border-white/[0.15]"
-                          }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="radio"
-                              name="audio_format"
-                              checked={isSelected}
-                              onChange={() => handleAudioOutputChange({ format: fmt })}
-                              className="w-3.5 h-3.5 text-[#c4ff3d] accent-[#c4ff3d] cursor-pointer"
-                            />
-                            <span className="text-xs font-mono uppercase font-semibold">{fmt}</span>
-                          </div>
-                          <span className="text-[10px] text-[#71717a] font-mono">
-                            {fmt === "wav" ? "Lossless" : "Compressed"}
-                          </span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Sample rate: select with 16000, 24000 (default), 44100 Hz */}
-                <div className="space-y-1.5">
-                  <div className="flex justify-between items-center text-xs">
-                    <label className="font-semibold text-white">Sample rate</label>
-                    <span className="text-[11px] text-[#a1a1aa] font-mono">{audioOutput.sampleRate} Hz</span>
-                  </div>
-                  <select
-                    value={audioOutput.sampleRate}
-                    onChange={(e) =>
-                      handleAudioOutputChange({
-                        sampleRate: parseInt(e.target.value, 10) as 16000 | 24000 | 44100,
-                      })
-                    }
-                    className="w-full bg-[#18181b] border border-white/[0.1] rounded-lg px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-[#c4ff3d]"
-                  >
-                    <option value={16000}>16,000 Hz</option>
-                    <option value={24000}>24,000 Hz (default)</option>
-                    <option value={44100}>44,100 Hz</option>
-                  </select>
-                </div>
-
-                {/* Channels: radio Mono (default) and Stereo */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-white block">Channels</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {(["mono", "stereo"] as const).map((ch) => {
-                      const isSelected = audioOutput.channels === ch;
-                      return (
-                        <label
-                          key={ch}
-                          onClick={() => handleAudioOutputChange({ channels: ch })}
-                          className={`flex items-center justify-between p-2 rounded-lg border cursor-pointer transition-all ${
-                            isSelected
-                              ? "bg-[#c4ff3d]/10 border-[#c4ff3d]/40 text-white"
-                              : "bg-[#18181b] border-white/[0.06] text-[#a1a1aa] hover:border-white/[0.15]"
-                          }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="radio"
-                              name="audio_channels"
-                              checked={isSelected}
-                              onChange={() => handleAudioOutputChange({ channels: ch })}
-                              className="w-3.5 h-3.5 text-[#c4ff3d] accent-[#c4ff3d] cursor-pointer"
-                            />
-                            <span className="text-xs font-mono capitalize">{ch}</span>
-                          </div>
-                          <span className="text-[10px] text-[#71717a] font-mono">
-                            {ch === "mono" ? "1-ch" : "2-ch"}
-                          </span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* MP3 bitrate: select with 64, 96, 128 (default), 192 kbps. Disabled when WAV is selected */}
-                <div className={`space-y-1.5 transition-opacity ${audioOutput.format === "wav" ? "opacity-40" : ""}`}>
-                  <div className="flex justify-between items-center text-xs">
-                    <label className="font-semibold text-white">MP3 bitrate</label>
-                    <span className="text-[11px] text-[#a1a1aa] font-mono">
-                      {audioOutput.format === "wav" ? "N/A (WAV)" : `${audioOutput.mp3Bitrate} kbps`}
-                    </span>
-                  </div>
-                  <select
-                    value={audioOutput.mp3Bitrate}
-                    disabled={audioOutput.format === "wav"}
-                    onChange={(e) =>
-                      handleAudioOutputChange({
-                        mp3Bitrate: parseInt(e.target.value, 10) as 64 | 96 | 128 | 192,
-                      })
-                    }
-                    className="w-full bg-[#18181b] border border-white/[0.1] rounded-lg px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-[#c4ff3d] disabled:cursor-not-allowed"
-                  >
-                    <option value={64}>64 kbps</option>
-                    <option value={96}>96 kbps</option>
-                    <option value={128}>128 kbps (default)</option>
-                    <option value={192}>192 kbps</option>
-                  </select>
-                </div>
-
-                {/* Lead-in and tail controls */}
-                <div className="grid grid-cols-2 gap-2 pt-1 border-t border-white/[0.06]">
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-white block">Music lead-in (sec)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.5"
-                      value={audioOutput.musicLeadIn}
-                      onChange={(e) =>
-                        handleAudioOutputChange({
-                          musicLeadIn: Math.max(0, parseFloat(e.target.value) || 0),
-                        })
-                      }
-                      className="w-full bg-[#18181b] border border-white/[0.1] rounded-lg px-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-[#c4ff3d]"
-                    />
-                    <span className="text-[10px] text-[#71717a] block font-mono">Before block 1</span>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-white block">Music tail (sec)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.5"
-                      value={audioOutput.musicTail}
-                      onChange={(e) =>
-                        handleAudioOutputChange({
-                          musicTail: Math.max(0, parseFloat(e.target.value) || 0),
-                        })
-                      }
-                      className="w-full bg-[#18181b] border border-white/[0.1] rounded-lg px-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-[#c4ff3d]"
-                    />
-                    <span className="text-[10px] text-[#71717a] block font-mono">After last block</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Card 3: Audio Player & Waveform Card */}
-            <div className="bg-[#121214] border border-white/[0.08] rounded-[20px] p-5 sm:p-6 space-y-4 shadow-xl">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Volume2 className="w-4 h-4 text-[#c4ff3d]" />
-                  <span className="text-sm font-semibold text-white">Audio Player</span>
-                </div>
-                {synthResult && (
-                  <span className="text-xs px-2.5 py-0.5 bg-[#c4ff3d]/15 text-[#c4ff3d] border border-[#c4ff3d]/30 rounded-full font-mono font-medium">
-                    {synthResult.durationSeconds.toFixed(1)}s
-                  </span>
-                )}
-              </div>
-
-              {synthResult ? (
-                <div className="space-y-4">
-                  {/* Styled Waveform Visualization */}
-                  <div className="p-3 bg-[#18181b] border border-white/[0.08] rounded-xl flex flex-col gap-3">
-                    <div className="flex items-center justify-between gap-1 h-12 px-1 overflow-hidden">
-                      {[
-                        30, 60, 45, 80, 100, 70, 50, 85, 95, 60, 40, 75, 90, 55, 35, 70,
-                        85, 100, 65, 45, 80, 95, 70, 50, 30, 60, 85, 75, 40, 65, 90, 55,
-                      ].map((height, i) => (
-                        <span
-                          key={i}
-                          className="flex-1 bg-[#c4ff3d]/70 rounded-full transition-all hover:bg-[#c4ff3d]"
-                          style={{ height: `${height}%` }}
+              {openAdvanced && (
+                <div id="card-advanced-body" className="p-4 sm:p-5 pt-0 space-y-4 border-t border-white/[0.06]">
+                  <div className="space-y-3">
+                    <p className="text-xs text-[#a1a1aa] leading-relaxed">
+                      Configure lead-in and tail background music buffers applied before speech begins and after speech ends.
+                    </p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-white block">Music lead-in (sec)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.5"
+                          value={audioOutput.musicLeadIn}
+                          onChange={(e) =>
+                            handleAudioOutputChange({
+                              musicLeadIn: Math.max(0, parseFloat(e.target.value) || 0),
+                            })
+                          }
+                          className="w-full bg-[#18181b] border border-white/[0.1] rounded-lg px-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-[#c4ff3d]"
                         />
-                      ))}
-                    </div>
-
-                    {/* Native HTML5 Audio Element */}
-                    <audio
-                      controls
-                      src={synthResult.url}
-                      className="w-full h-9 accent-[#c4ff3d] rounded-lg"
-                    />
-                  </div>
-
-                  {/* Audio Metadata */}
-                  <div className="text-xs font-mono space-y-1.5 text-[#a1a1aa]">
-                    <div className="truncate text-white font-medium">
-                      {synthResult.fileName}
-                    </div>
-                    <div>Model: {effectiveModel}</div>
-                    <div className="flex flex-wrap gap-x-2 gap-y-1 text-white/90">
-                      <span>Format: <strong className="text-[#c4ff3d] font-semibold uppercase">{synthResult.format || audioOutput.format}</strong></span>
-                      <span>·</span>
-                      <span>Rate: <strong className="text-white font-medium">{synthResult.sampleRate || audioOutput.sampleRate} Hz</strong></span>
-                      <span>·</span>
-                      <span>Channels: <strong className="text-white font-medium capitalize">{synthResult.channels || audioOutput.channels}</strong></span>
-                      {(synthResult.format || audioOutput.format) === "mp3" && (
-                        <>
-                          <span>·</span>
-                          <span>Bitrate: <strong className="text-[#c4ff3d] font-medium">{synthResult.mp3Bitrate || audioOutput.mp3Bitrate} kbps</strong></span>
-                        </>
-                      )}
-                    </div>
-                    <div>Duration: <strong className="text-white font-medium">{synthResult.durationSeconds.toFixed(1)}s</strong></div>
-                    <div className="text-[11px] text-[#52525b]">
-                      Completed {synthResult.chunkLogs.length} chunk(s)
+                        <span className="text-[10px] text-[#71717a] block font-mono">Before block 1</span>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-white block">Music tail (sec)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.5"
+                          value={audioOutput.musicTail}
+                          onChange={(e) =>
+                            handleAudioOutputChange({
+                              musicTail: Math.max(0, parseFloat(e.target.value) || 0),
+                            })
+                          }
+                          className="w-full bg-[#18181b] border border-white/[0.1] rounded-lg px-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-[#c4ff3d]"
+                        />
+                        <span className="text-[10px] text-[#71717a] block font-mono">After last block</span>
+                      </div>
                     </div>
                   </div>
-
-                  {/* Download Button */}
-                  <a
-                    href={synthResult.url}
-                    download={synthResult.fileName}
-                    className="w-full py-2.5 px-4 text-xs font-semibold text-[#0a0a0b] bg-[#c4ff3d] rounded-xl hover:brightness-110 transition-all flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(196,255,61,0.25)]"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    Download {(synthResult.format || audioOutput.format).toUpperCase()}
-                  </a>
-                </div>
-              ) : (
-                /* Idle Player State */
-                <div className="p-4 bg-[#18181b] border border-white/[0.06] rounded-xl space-y-3 text-center">
-                  <div className="flex items-center justify-between gap-1 h-10 px-2 opacity-30">
-                    {[
-                      25, 40, 60, 35, 50, 70, 45, 60, 80, 55, 40, 65, 50, 35, 60, 45,
-                      70, 55, 40, 60, 50, 35, 55, 40, 30, 45, 60, 50, 35, 40, 55, 30,
-                    ].map((height, i) => (
-                      <span
-                        key={i}
-                        className="flex-1 bg-white rounded-full"
-                        style={{ height: `${height}%` }}
-                      />
-                    ))}
-                  </div>
-                  <p className="text-xs text-[#a1a1aa] leading-relaxed">
-                    Click <strong className="text-white">Generate Podcast</strong> to synthesize audio and display the waveform player.
-                  </p>
                 </div>
               )}
             </div>
           </div>
         </div>
 
-        {/* 4. Secondary Sections (Python CLI & Architecture Specs) */}
-        <section className="mt-2 bg-[#121214] border border-white/[0.08] rounded-[20px] p-5 sm:p-6 space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.07] pb-3.5">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-white tracking-wide uppercase">
-                Tools &amp; Reference
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() =>
-                  setActiveSecondaryTab((curr) => (curr === "cli" ? null : "cli"))
-                }
-                className={`px-3 py-1.5 text-xs font-medium rounded-xl border transition-all flex items-center gap-1.5 ${
-                  activeSecondaryTab === "cli"
-                    ? "bg-[#c4ff3d] text-[#0a0a0b] border-[#c4ff3d] font-semibold"
-                    : "bg-[#18181b] text-[#a1a1aa] hover:text-white border-white/[0.08]"
-                }`}
-              >
-                <FileCode className="w-3.5 h-3.5" />
-                Python CLI
-                {activeSecondaryTab === "cli" ? (
-                  <ChevronUp className="w-3 h-3 ml-0.5" />
-                ) : (
-                  <ChevronDown className="w-3 h-3 ml-0.5" />
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  setActiveSecondaryTab((curr) => (curr === "spec" ? null : "spec"))
-                }
-                className={`px-3 py-1.5 text-xs font-medium rounded-xl border transition-all flex items-center gap-1.5 ${
-                  activeSecondaryTab === "spec"
-                    ? "bg-[#c4ff3d] text-[#0a0a0b] border-[#c4ff3d] font-semibold"
-                    : "bg-[#18181b] text-[#a1a1aa] hover:text-white border-white/[0.08]"
-                }`}
-              >
-                <Layers className="w-3.5 h-3.5" />
-                Specs
-                {activeSecondaryTab === "spec" ? (
-                  <ChevronUp className="w-3 h-3 ml-0.5" />
-                ) : (
-                  <ChevronDown className="w-3 h-3 ml-0.5" />
-                )}
-              </button>
-            </div>
-          </div>
-
-          {/* Collapsible Python CLI view */}
-          {activeSecondaryTab === "cli" && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start pt-2">
-              <div className="lg:col-span-8 border border-white/[0.08] bg-[#18181b] rounded-xl overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.08] bg-[#121214]">
-                  <div className="flex items-center gap-2 text-xs font-mono text-[#f5f5f7]">
-                    <FileCode className="w-4 h-4 text-[#c4ff3d]" />
-                    <span>make_podcast.py</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleCopyCli}
-                    className="px-3 py-1 text-xs font-medium text-[#f5f5f7] bg-[#18181b] hover:bg-white/[0.08] border border-white/[0.08] rounded-lg transition-colors flex items-center gap-1.5"
-                  >
-                    {copiedCli ? (
-                      <>
-                        <Check className="w-3.5 h-3.5 text-[#c4ff3d]" />
-                        Copied
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3.5 h-3.5 text-[#a1a1aa]" />
-                        Copy Script
-                      </>
-                    )}
-                  </button>
-                </div>
-                <pre className="p-4 text-xs font-mono text-[#f5f5f7] overflow-x-auto max-h-[480px] leading-relaxed">
-                  <code>{pythonScript}</code>
-                </pre>
+        {/* 4. Footer: Tools & Reference collapsible card (collapsed by default) */}
+        <footer className="w-full mt-2">
+          <div className="bg-[#121214] border border-white/[0.08] rounded-[20px] shadow-xl overflow-hidden">
+            <div
+              className="w-full flex items-center justify-between p-4 sm:p-5 cursor-pointer select-none hover:bg-white/[0.02] transition-colors"
+              onClick={() => setOpenToolsRef(!openToolsRef)}
+            >
+              <div className="flex items-center gap-2.5">
+                <FileCode className="w-4 h-4 text-[#c4ff3d]" />
+                <span className="text-sm font-semibold text-white tracking-wide">
+                  Tools &amp; Reference
+                </span>
               </div>
+              <button
+                type="button"
+                aria-expanded={openToolsRef}
+                aria-controls="card-tools-ref-body"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setOpenToolsRef(!openToolsRef);
+                }}
+                className="p-1 rounded-lg text-[#a1a1aa] hover:text-white hover:bg-white/[0.08] transition-colors focus:outline-none"
+                title={openToolsRef ? "Collapse" : "Expand"}
+              >
+                <ChevronDown
+                  className={`w-4 h-4 transform transition-transform duration-200 ${openToolsRef ? "rotate-180" : ""}`}
+                />
+              </button>
+            </div>
 
-              <div className="lg:col-span-4 p-4 bg-[#18181b] border border-white/[0.08] rounded-xl space-y-3">
-                <h4 className="text-xs font-semibold text-white flex items-center gap-2">
-                  <Radio className="w-3.5 h-3.5 text-[#c4ff3d]" />
-                  CLI Usage
-                </h4>
-                <p className="text-xs text-[#a1a1aa] leading-relaxed">
-                  Run the Python script with <code className="text-[#c4ff3d] font-mono">--lang</code> for any supported language:
-                </p>
-                <pre className="p-3 bg-[#121214] border border-white/[0.06] rounded-lg text-xs font-mono text-[#f5f5f7] overflow-x-auto leading-relaxed">
+            {openToolsRef && (
+              <div id="card-tools-ref-body" className="p-4 sm:p-6 pt-0 space-y-4 border-t border-white/[0.06]">
+                {/* Sub-card a: Usage & Quota (Today) */}
+                <div className="bg-[#18181b] border border-white/[0.08] rounded-xl overflow-hidden">
+                  <div
+                    className="w-full flex items-center justify-between px-4 py-3 cursor-pointer select-none hover:bg-white/[0.02] transition-colors"
+                    onClick={() => setOpenUsage(!openUsage)}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Gauge className="w-3.5 h-3.5 text-[#c4ff3d]" />
+                      <span className="text-xs font-semibold text-white">Usage &amp; Quota (Today)</span>
+                    </div>
+                    <button
+                      type="button"
+                      aria-expanded={openUsage}
+                      aria-controls="card-usage-body"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setOpenUsage(!openUsage);
+                      }}
+                      className="p-1 rounded-lg text-[#a1a1aa] hover:text-white hover:bg-white/[0.08] transition-colors focus:outline-none"
+                      title={openUsage ? "Collapse" : "Expand"}
+                    >
+                      <ChevronDown
+                        className={`w-3.5 h-3.5 transform transition-transform duration-200 ${openUsage ? "rotate-180" : ""}`}
+                      />
+                    </button>
+                  </div>
+
+                  {openUsage && (
+                    <div id="card-usage-body" className="p-4 pt-2 space-y-3 border-t border-white/[0.06]">
+                      {(() => {
+                        const reqPercent = Math.min(
+                          100,
+                          Math.round((todayUsage.requests / usageLimits.dailyRequests) * 100)
+                        );
+                        const wordPercent = Math.min(
+                          100,
+                          Math.round((todayUsage.words / usageLimits.dailyWords) * 100)
+                        );
+
+                        const formatNum = (num: number | string) =>
+                          selectedLang === "fa" ? toPersianDigits(num) : String(num);
+
+                        const getBarColor = (pct: number) => {
+                          if (pct >= 90) return "bg-red-500";
+                          if (pct >= 70) return "bg-amber-400";
+                          return "bg-[#c4ff3d]";
+                        };
+
+                        const getStatusText = (pct: number) => {
+                          if (pct >= 90)
+                            return { label: "Limit almost reached", color: "text-red-400" };
+                          if (pct >= 70)
+                            return { label: "Near limit", color: "text-amber-400" };
+                          return { label: "OK", color: "text-[#c4ff3d]" };
+                        };
+
+                        const remRequests = Math.max(0, usageLimits.dailyRequests - todayUsage.requests);
+                        const remWords = Math.max(0, usageLimits.dailyWords - todayUsage.words);
+
+                        return (
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-semibold text-white">Today's Summary</span>
+                              <span className="text-[11px] text-[#a1a1aa] font-mono">
+                                {getTodayKey().replace("usage_", "")}
+                              </span>
+                            </div>
+
+                            {/* Requests Progress Bar */}
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between text-xs font-mono">
+                                <span className="text-[#a1a1aa]">Requests today</span>
+                                <span className="text-white font-medium">
+                                  {formatNum(todayUsage.requests)} / {formatNum(usageLimits.dailyRequests)} ({formatNum(reqPercent)}%)
+                                </span>
+                              </div>
+                              <div className="w-full bg-[#121214] border border-white/[0.08] rounded-full h-[6px] overflow-hidden">
+                                <div
+                                  className={`h-[6px] rounded-full transition-all duration-300 ${getBarColor(reqPercent)}`}
+                                  style={{ width: `${reqPercent}%` }}
+                                />
+                              </div>
+                              <div className="flex items-center justify-between text-[11px] font-mono">
+                                <span className={getStatusText(reqPercent).color}>
+                                  {getStatusText(reqPercent).label}
+                                </span>
+                                <span className="text-[#71717a]">
+                                  Remaining: {formatNum(remRequests)}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Words Progress Bar */}
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between text-xs font-mono">
+                                <span className="text-[#a1a1aa]">Words today</span>
+                                <span className="text-white font-medium">
+                                  {formatNum(todayUsage.words)} / {formatNum(usageLimits.dailyWords)} ({formatNum(wordPercent)}%)
+                                </span>
+                              </div>
+                              <div className="w-full bg-[#121214] border border-white/[0.08] rounded-full h-[6px] overflow-hidden">
+                                <div
+                                  className={`h-[6px] rounded-full transition-all duration-300 ${getBarColor(wordPercent)}`}
+                                  style={{ width: `${wordPercent}%` }}
+                                />
+                              </div>
+                              <div className="flex items-center justify-between text-[11px] font-mono">
+                                <span className={getStatusText(wordPercent).color}>
+                                  {getStatusText(wordPercent).label}
+                                </span>
+                                <span className="text-[#71717a]">
+                                  Remaining: {formatNum(remWords)}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Remaining amount summary */}
+                            <div className="p-2.5 bg-[#121214] border border-white/[0.05] rounded-lg text-[11px] font-mono space-y-1 text-[#a1a1aa]">
+                              <div className="text-white">
+                                Remaining today: {formatNum(remRequests)} requests, {formatNum(remWords)} words.
+                              </div>
+                              <div className="text-[#71717a] flex items-center justify-between">
+                                <span>Session: {formatNum(sessionRequests)} requests</span>
+                                <span>Audio today: {formatNum(Math.round(todayUsage.audioSeconds))}s</span>
+                              </div>
+                            </div>
+
+                            {/* Editable Daily Limits */}
+                            <div className="p-2.5 bg-[#121214] border border-white/[0.06] rounded-lg space-y-2">
+                              <div className="text-[11px] font-semibold text-white">Daily Limits</div>
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <label className="text-[11px] text-[#a1a1aa] block mb-1">Daily request limit</label>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    value={usageLimits.dailyRequests}
+                                    onChange={(e) => {
+                                      const rawVal = e.target.value.trim();
+                                      const val = parseInt(rawVal, 10);
+                                      const updated = {
+                                        ...usageLimits,
+                                        dailyRequests: isNaN(val) || val <= 0 ? 1500 : val,
+                                      };
+                                      setUsageLimits(updated);
+                                      saveUsageLimits(updated);
+                                    }}
+                                    className="w-full bg-[#18181b] border border-white/[0.1] rounded px-2 py-1 text-xs text-white font-mono focus:outline-none focus:border-[#c4ff3d]"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-[11px] text-[#a1a1aa] block mb-1">Daily word limit</label>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    value={usageLimits.dailyWords}
+                                    onChange={(e) => {
+                                      const rawVal = e.target.value.trim();
+                                      const val = parseInt(rawVal, 10);
+                                      const updated = {
+                                        ...usageLimits,
+                                        dailyWords: isNaN(val) || val <= 0 ? 100000 : val,
+                                      };
+                                      setUsageLimits(updated);
+                                      saveUsageLimits(updated);
+                                    }}
+                                    className="w-full bg-[#18181b] border border-white/[0.1] rounded px-2 py-1 text-xs text-white font-mono focus:outline-none focus:border-[#c4ff3d]"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Official Quota Link & Note */}
+                            <div className="pt-2 border-t border-white/[0.06] space-y-2 text-[11px] text-[#a1a1aa] leading-relaxed">
+                              <p>
+                                These numbers are counted by this app only. The official quota may be lower.
+                              </p>
+
+                              <div className="flex items-center justify-between gap-2 pt-0.5">
+                                <a
+                                  href="https://ai.dev/rate-limit"
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-[#0a0a0b] bg-[#c4ff3d] rounded-lg hover:brightness-110 transition-all font-sans"
+                                >
+                                  <span>Check official quota</span>
+                                  <ExternalLink className="w-3 h-3" />
+                                </a>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+                </div>
+
+                {/* Sub-card b: Python CLI */}
+                <div className="bg-[#18181b] border border-white/[0.08] rounded-xl overflow-hidden">
+                  <div
+                    className="w-full flex items-center justify-between px-4 py-3 cursor-pointer select-none hover:bg-white/[0.02] transition-colors"
+                    onClick={() => setOpenCli(!openCli)}
+                  >
+                    <div className="flex items-center gap-2">
+                      <FileCode className="w-3.5 h-3.5 text-[#c4ff3d]" />
+                      <span className="text-xs font-semibold text-white">Python CLI</span>
+                    </div>
+                    <button
+                      type="button"
+                      aria-expanded={openCli}
+                      aria-controls="card-cli-body"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setOpenCli(!openCli);
+                      }}
+                      className="p-1 rounded-lg text-[#a1a1aa] hover:text-white hover:bg-white/[0.08] transition-colors focus:outline-none"
+                      title={openCli ? "Collapse" : "Expand"}
+                    >
+                      <ChevronDown
+                        className={`w-3.5 h-3.5 transform transition-transform duration-200 ${openCli ? "rotate-180" : ""}`}
+                      />
+                    </button>
+                  </div>
+
+                  {openCli && (
+                    <div id="card-cli-body" className="p-4 pt-2 space-y-4 border-t border-white/[0.06]">
+                      <div className="border border-white/[0.08] bg-[#121214] rounded-xl overflow-hidden">
+                        <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.08] bg-[#18181b]">
+                          <div className="flex items-center gap-2 text-xs font-mono text-[#f5f5f7]">
+                            <FileCode className="w-4 h-4 text-[#c4ff3d]" />
+                            <span>make_podcast.py</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleCopyCli}
+                            className="px-3 py-1 text-xs font-medium text-[#f5f5f7] bg-[#121214] hover:bg-white/[0.08] border border-white/[0.08] rounded-lg transition-colors flex items-center gap-1.5"
+                          >
+                            {copiedCli ? (
+                              <>
+                                <Check className="w-3.5 h-3.5 text-[#c4ff3d]" />
+                                Copied
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-3.5 h-3.5 text-[#a1a1aa]" />
+                                Copy Script
+                              </>
+                            )}
+                          </button>
+                        </div>
+                        <pre className="p-4 text-xs font-mono text-[#f5f5f7] overflow-x-auto max-h-[480px] leading-relaxed">
+                          <code>{pythonScript}</code>
+                        </pre>
+                      </div>
+
+                      <div className="p-4 bg-[#121214] border border-white/[0.08] rounded-xl space-y-3">
+                        <h4 className="text-xs font-semibold text-white flex items-center gap-2">
+                          <Radio className="w-3.5 h-3.5 text-[#c4ff3d]" />
+                          CLI Usage
+                        </h4>
+                        <p className="text-xs text-[#a1a1aa] leading-relaxed">
+                          Run the Python script with <code className="text-[#c4ff3d] font-mono">--lang</code> for any supported language:
+                        </p>
+                        <pre className="p-3 bg-[#18181b] border border-white/[0.06] rounded-lg text-xs font-mono text-[#f5f5f7] overflow-x-auto leading-relaxed">
 {`python make_podcast.py --lang en
 python make_podcast.py --lang fa
 python make_podcast.py --lang ar
 python make_podcast.py --lang en --model ${DEFAULT_TTS_MODEL} --voice1 Rami --voice2 Leda`}
-                </pre>
-                <p className="text-[11px] text-[#52525b]">
-                  Outputs to <code className="text-[#c4ff3d]">outputs/podcast_&lt;lang&gt;_&lt;timestamp&gt;.wav</code>.
-                </p>
-              </div>
-            </div>
-          )}
+                        </pre>
+                        <p className="text-[11px] text-[#52525b]">
+                          Outputs to <code className="text-[#c4ff3d]">outputs/podcast_&lt;lang&gt;_&lt;timestamp&gt;.wav</code>.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
 
-          {/* Collapsible Architecture Specs view */}
-          {activeSecondaryTab === "spec" && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-              <div className="p-4 bg-[#18181b] border border-white/[0.08] rounded-xl space-y-3">
-                <div className="flex items-center gap-2 text-xs text-[#c4ff3d] font-mono">
-                  <Layers className="w-3.5 h-3.5" />
-                  <span>Audio Pipeline & Storage</span>
-                </div>
-                <h4 className="text-sm font-semibold text-white">
-                  Direct Browser Synthesis & RIFF WAV Builder
-                </h4>
-                <p className="text-xs text-[#a1a1aa] leading-relaxed">
-                  Audio is streamed chunk-by-chunk in 20-block batches via Gemini TTS API, formatted with a 44-byte RIFF WAVE header, and converted into a standard playable and downloadable WAV Blob.
-                </p>
-                <div className="border-t border-white/[0.08] pt-2 space-y-1.5 text-xs font-mono">
-                  <div className="flex justify-between">
-                    <span className="text-[#a1a1aa]">Format</span>
-                    <span className="text-[#f5f5f7]">16-bit Linear PCM RIFF WAV</span>
+                {/* Sub-card c: Technical Specs */}
+                <div className="bg-[#18181b] border border-white/[0.08] rounded-xl overflow-hidden">
+                  <div
+                    className="w-full flex items-center justify-between px-4 py-3 cursor-pointer select-none hover:bg-white/[0.02] transition-colors"
+                    onClick={() => setOpenSpecs(!openSpecs)}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Layers className="w-3.5 h-3.5 text-[#c4ff3d]" />
+                      <span className="text-xs font-semibold text-white">Technical Specs</span>
+                    </div>
+                    <button
+                      type="button"
+                      aria-expanded={openSpecs}
+                      aria-controls="card-specs-body"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setOpenSpecs(!openSpecs);
+                      }}
+                      className="p-1 rounded-lg text-[#a1a1aa] hover:text-white hover:bg-white/[0.08] transition-colors focus:outline-none"
+                      title={openSpecs ? "Collapse" : "Expand"}
+                    >
+                      <ChevronDown
+                        className={`w-3.5 h-3.5 transform transition-transform duration-200 ${openSpecs ? "rotate-180" : ""}`}
+                      />
+                    </button>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-[#a1a1aa]">Sample Rate</span>
-                    <span className="text-[#f5f5f7]">24,000 Hz Mono</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[#a1a1aa]">Engine</span>
-                    <span className="text-[#c4ff3d]">Client Gemini Flash TTS</span>
-                  </div>
-                </div>
-              </div>
 
-              <div className="p-4 bg-[#18181b] border border-white/[0.08] rounded-xl space-y-3">
-                <div className="text-xs text-[#c4ff3d] font-mono">
-                  Languages & Batching
-                </div>
-                <h4 className="text-sm font-semibold text-white">
-                  Multilingual Dual-Speaker Support
-                </h4>
-                <p className="text-xs text-[#a1a1aa] leading-relaxed">
-                  Supports English (<code className="text-[#c4ff3d]">en</code>), Persian (<code className="text-[#c4ff3d]">fa</code>), and Arabic (<code className="text-[#c4ff3d]">ar</code>) with fixed voices: Speaker 1 = Rami, Speaker 2 = Leda.
-                </p>
-                <div className="border-t border-white/[0.08] pt-2 space-y-1.5 text-xs font-mono">
-                  <div className="flex justify-between">
-                    <span className="text-[#a1a1aa]">Chunk Size</span>
-                    <span className="text-[#f5f5f7]">20 blocks</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[#a1a1aa]">Retry Attempts</span>
-                    <span className="text-[#f5f5f7]">3 retries (5s wait)</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[#a1a1aa]">Coverage Gates</span>
-                    <span className="text-[#c4ff3d]">0.6 chunk / 0.85 total</span>
-                  </div>
+                  {openSpecs && (
+                    <div id="card-specs-body" className="p-4 pt-2 space-y-4 border-t border-white/[0.06]">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="p-4 bg-[#121214] border border-white/[0.08] rounded-xl space-y-3">
+                          <div className="flex items-center gap-2 text-xs text-[#c4ff3d] font-mono">
+                            <Layers className="w-3.5 h-3.5" />
+                            <span>Audio Pipeline &amp; Storage</span>
+                          </div>
+                          <h4 className="text-sm font-semibold text-white">
+                            Direct Browser Synthesis &amp; RIFF WAV Builder
+                          </h4>
+                          <p className="text-xs text-[#a1a1aa] leading-relaxed">
+                            Audio is streamed chunk-by-chunk in 20-block batches via Gemini TTS API, formatted with a 44-byte RIFF WAVE header, and converted into a standard playable and downloadable WAV Blob.
+                          </p>
+                          <div className="border-t border-white/[0.08] pt-2 space-y-1.5 text-xs font-mono">
+                            <div className="flex justify-between">
+                              <span className="text-[#a1a1aa]">Format</span>
+                              <span className="text-[#f5f5f7]">16-bit Linear PCM RIFF WAV</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-[#a1a1aa]">Sample Rate</span>
+                              <span className="text-[#f5f5f7]">24,000 Hz Mono</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-[#a1a1aa]">Engine</span>
+                              <span className="text-[#c4ff3d]">Client Gemini Flash TTS</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="p-4 bg-[#121214] border border-white/[0.08] rounded-xl space-y-3">
+                          <div className="text-xs text-[#c4ff3d] font-mono">
+                            Languages &amp; Batching
+                          </div>
+                          <h4 className="text-sm font-semibold text-white">
+                            Multilingual Dual-Speaker Support
+                          </h4>
+                          <p className="text-xs text-[#a1a1aa] leading-relaxed">
+                            Supports English (<code className="text-[#c4ff3d]">en</code>), Persian (<code className="text-[#c4ff3d]">fa</code>), and Arabic (<code className="text-[#c4ff3d]">ar</code>) with fixed voices: Speaker 1 = Rami, Speaker 2 = Leda.
+                          </p>
+                          <div className="border-t border-white/[0.08] pt-2 space-y-1.5 text-xs font-mono">
+                            <div className="flex justify-between">
+                              <span className="text-[#a1a1aa]">Chunk Size</span>
+                              <span className="text-[#f5f5f7]">20 blocks</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-[#a1a1aa]">Retry Attempts</span>
+                              <span className="text-[#f5f5f7]">3 retries (5s wait)</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-[#a1a1aa]">Coverage Gates</span>
+                              <span className="text-[#c4ff3d]">0.6 chunk / 0.85 total</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>
-          )}
-        </section>
+            )}
+          </div>
+        </footer>
       </main>
     </div>
   );
